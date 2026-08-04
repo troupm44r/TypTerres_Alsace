@@ -68,7 +68,7 @@ if not check_password():
 # AFFICHAGE DU MESSAGE ET BOUTON DE DECONNEXION (BARRE LATERALE)
 # ---------------------------------------------------------
 current_user = st.session_state.get("user_name", "Utilisateur")
-st.sidebar.markdown(f"👋 **Bienvenue {current_user}**")
+st.sidebar.markdown(f"**Bienvenue {current_user}**")
 
 if st.sidebar.button("Déconnexion"):
     del st.session_state["password_correct"]

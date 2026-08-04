@@ -58,7 +58,7 @@ if not check_password():
     st.stop()
 
 
-user_name = st.session_state.get("user_name", "Utilisateur")
+user_name = st.session_state.get("user_name")
 st.sidebar.markdown(f"👋 **Bienvenue {user_name}**")
 
 # Bouton de déconnexion dans le menu latéral

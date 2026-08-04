@@ -13,19 +13,27 @@ st.set_page_config(
 )
 
 
+
 # ---------------------------------------------------------
 # SYSTEME D'AUTHENTIFICATION SIMPLE (VIA SECRETS)
 # ---------------------------------------------------------
 def check_password():
-    """Vérifie le mot de passe saisi contre les secrets configurés."""
+    """Vérifie le mot de passe saisi et récupère l'identifiant utilisateur."""
     def password_entered():
-        # Vérification si le mot de passe existe dans la section [passwords] des secrets
         user_pwd = st.session_state["password_input"]
-        valid_passwords = st.secrets.get("passwords", {}).values()
+        passwords_dict = st.secrets.get("passwords", {})
         
-        if user_pwd in valid_passwords:
+        # Recherche du nom d'utilisateur correspondant au mot de passe
+        matched_user = None
+        for username, password in passwords_dict.items():
+            if user_pwd == password:
+                matched_user = username
+                break
+        
+        if matched_user:
             st.session_state["password_correct"] = True
-            del st.session_state["password_input"]  # Ne pas garder le mot de passe en mémoire
+            st.session_state["user_name"] = matched_user  # Stocke "admin", "ServiceMTA", etc.
+            del st.session_state["password_input"]
         else:
             st.session_state["password_correct"] = False
 
@@ -51,20 +59,21 @@ def check_password():
         st.error("😕 Mot de passe incorrect.")
         return False
     else:
-        # Mot de passe correct
-        
         return True
 
 if not check_password():
     st.stop()
 
+# ---------------------------------------------------------
+# AFFICHAGE DU MESSAGE ET BOUTON DE DECONNEXION (BARRE LATERALE)
+# ---------------------------------------------------------
+current_user = st.session_state.get("user_name", "Utilisateur")
+st.sidebar.markdown(f"👋 **Bienvenue {current_user}**")
 
-user_name = st.session_state.get("user_name")
-st.sidebar.markdown(f"👋 **Bienvenue {user_name}**")
-
-# Bouton de déconnexion dans le menu latéral
 if st.sidebar.button("Déconnexion"):
     del st.session_state["password_correct"]
+    if "user_name" in st.session_state:
+        del st.session_state["user_name"]
     st.rerun()
 
 # ==========================================

@@ -52,22 +52,7 @@ def check_password():
         return False
     else:
         # Mot de passe correct
-        user_pwd = st.session_state["password_input"]
-        passwords_dict = st.secrets.get("passwords", {})
         
-        # On parcourt les paires (nom_utilisateur, mot_de_passe)
-        matched_user = None
-        for username, password in passwords_dict.items():
-            if user_pwd == password:
-                matched_user = username
-                break
-        
-        if matched_user:
-            st.session_state["password_correct"] = True
-            st.session_state["user_name"] = matched_user  # Stocke "admin" ou "ServiceMTA"
-            del st.session_state["password_input"]
-        else:
-            st.session_state["password_correct"] = False
         return True
 
 if not check_password():

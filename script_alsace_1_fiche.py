@@ -357,7 +357,7 @@ if df is not None:
                 )
 
     with col_right:
-        st.subheader("👁️ Aperçu du rendu")
+        st.subheader("Aperçu du rendu")
         if html_payload:
             st.components.v1.html(html_payload, height=680, scrolling=True)
 

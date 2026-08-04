@@ -17,8 +17,41 @@ st.set_page_config(
 # SYSTEME D'AUTHENTIFICATION SIMPLE (VIA SECRETS)
 # ---------------------------------------------------------
 def check_password():
-    """Vérifie le mot de passe et extrait le nom d'utilisateur (la clé)."""
+    """Vérifie le mot de passe saisi contre les secrets configurés."""
     def password_entered():
+        # Vérification si le mot de passe existe dans la section [passwords] des secrets
+        user_pwd = st.session_state["password_input"]
+        valid_passwords = st.secrets.get("passwords", {}).values()
+        
+        if user_pwd in valid_passwords:
+            st.session_state["password_correct"] = True
+            del st.session_state["password_input"]  # Ne pas garder le mot de passe en mémoire
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # Premier affichage : formulaire de connexion
+        st.title("🔒 Accès Protégé")
+        st.text_input(
+            "Veuillez saisir le mot de passe d'accès :", 
+            type="password", 
+            on_change=password_entered, 
+            key="password_input"
+        )
+        return False
+    elif not st.session_state["password_correct"]:
+        # Mot de passe incorrect
+        st.title("🔒 Accès Protégé")
+        st.text_input(
+            "Veuillez saisir le mot de passe d'accès :", 
+            type="password", 
+            on_change=password_entered, 
+            key="password_input"
+        )
+        st.error("😕 Mot de passe incorrect.")
+        return False
+    else:
+        # Mot de passe correct
         user_pwd = st.session_state["password_input"]
         passwords_dict = st.secrets.get("passwords", {})
         
@@ -35,28 +68,10 @@ def check_password():
             del st.session_state["password_input"]
         else:
             st.session_state["password_correct"] = False
-
-    if "password_correct" not in st.session_state:
-        st.title("🔒 Accès Protégé")
-        st.text_input(
-            "Veuillez saisir le mot de passe d'accès :", 
-            type="password", 
-            on_change=password_entered, 
-            key="password_input"
-        )
-        return False
-    elif not st.session_state["password_correct"]:
-        st.title("🔒 Accès Protégé")
-        st.text_input(
-            "Veuillez saisir le mot de passe d'accès :", 
-            type="password", 
-            on_change=password_entered, 
-            key="password_input"
-        )
-        st.error("😕 Mot de passe incorrect.")
-        return False
-    else:
         return True
+
+if not check_password():
+    st.stop()
 
 
 user_name = st.session_state.get("user_name")

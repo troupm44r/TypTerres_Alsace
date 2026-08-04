@@ -300,7 +300,7 @@ async def create_pdf_bytes(html_content):
 # ==========================================
 # Interface Streamlit
 # ==========================================
-st.title("🌾 Générateur de Fiches Techniques Typterres")
+st.title("🌾 Générateur de Fiches Techniques Typterres - Alsace")
 st.markdown("Sélectionnez un identifiant pour prévisualiser les données et générer le document PDF final.")
 
 logos_html_block = get_base64_logos_html(LOGO_FILES)

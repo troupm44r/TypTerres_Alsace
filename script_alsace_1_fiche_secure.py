@@ -17,20 +17,26 @@ st.set_page_config(
 # SYSTEME D'AUTHENTIFICATION SIMPLE (VIA SECRETS)
 # ---------------------------------------------------------
 def check_password():
-    """Vérifie le mot de passe saisi contre les secrets configurés."""
+    """Vérifie le mot de passe et extrait le nom d'utilisateur (la clé)."""
     def password_entered():
-        # Vérification si le mot de passe existe dans la section [passwords] des secrets
         user_pwd = st.session_state["password_input"]
-        valid_passwords = st.secrets.get("passwords", {}).values()
+        passwords_dict = st.secrets.get("passwords", {})
         
-        if user_pwd in valid_passwords:
+        # On parcourt les paires (nom_utilisateur, mot_de_passe)
+        matched_user = None
+        for username, password in passwords_dict.items():
+            if user_pwd == password:
+                matched_user = username
+                break
+        
+        if matched_user:
             st.session_state["password_correct"] = True
-            del st.session_state["password_input"]  # Ne pas garder le mot de passe en mémoire
+            st.session_state["user_name"] = matched_user  # Stocke "admin" ou "ServiceMTA"
+            del st.session_state["password_input"]
         else:
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        # Premier affichage : formulaire de connexion
         st.title("🔒 Accès Protégé")
         st.text_input(
             "Veuillez saisir le mot de passe d'accès :", 
@@ -40,7 +46,6 @@ def check_password():
         )
         return False
     elif not st.session_state["password_correct"]:
-        # Mot de passe incorrect
         st.title("🔒 Accès Protégé")
         st.text_input(
             "Veuillez saisir le mot de passe d'accès :", 
@@ -51,11 +56,7 @@ def check_password():
         st.error("😕 Mot de passe incorrect.")
         return False
     else:
-        # Mot de passe correct
         return True
-
-if not check_password():
-    st.stop()
 
 
 user_name = st.session_state.get("user_name")

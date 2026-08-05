@@ -4,6 +4,8 @@ import base64
 import pandas as pd
 import streamlit as st
 from playwright.sync_api import sync_playwright
+# from weasyprint import HTML
+from weasyprint import HTML
 
 st.set_page_config(
     page_title="Générateur Fiches Typterres",
@@ -345,22 +347,26 @@ body {{
 </body>
 </html>"""
 
+# def create_pdf_bytes(html_content):
+#     """Génération du PDF via Playwright en mode synchrone (compatible Windows et Streamlit)."""
+#     with sync_playwright() as p:
+#         browser = p.chromium.launch(
+#             headless=True,
+#             args=["--no-sandbox", "--disable-setuid-sandbox"]
+#         )
+#         page = browser.new_page()
+#         page.set_content(html_content, wait_until="networkidle")
+#         pdf_bytes = page.pdf(
+#             format="A4",
+#             print_background=True,
+#             margin={"top": "8mm", "bottom": "8mm", "left": "12mm", "right": "12mm"}
+#         )
+#         browser.close()
+#         return pdf_bytes
+
+
 def create_pdf_bytes(html_content):
-    """Génération du PDF via Playwright en mode synchrone (compatible Windows et Streamlit)."""
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=["--no-sandbox", "--disable-setuid-sandbox"]
-        )
-        page = browser.new_page()
-        page.set_content(html_content, wait_until="networkidle")
-        pdf_bytes = page.pdf(
-            format="A4",
-            print_background=True,
-            margin={"top": "8mm", "bottom": "8mm", "left": "12mm", "right": "12mm"}
-        )
-        browser.close()
-        return pdf_bytes
+    return HTML(string=html_content).write_pdf()
 
 # ==========================================
 # Interface Streamlit

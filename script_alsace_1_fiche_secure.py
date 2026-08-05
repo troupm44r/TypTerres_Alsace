@@ -1,10 +1,9 @@
 import os
 import glob
-import asyncio
 import base64
 import pandas as pd
 import streamlit as st
-from playwright.async_api import async_playwright
+from playwright.sync_api import sync_playwright
 
 st.set_page_config(
     page_title="Générateur Fiches Typterres",
@@ -12,13 +11,11 @@ st.set_page_config(
     layout="wide"
 )
 
-
-
 # ---------------------------------------------------------
 # SYSTEME D'AUTHENTIFICATION SIMPLE (VIA SECRETS)
 # ---------------------------------------------------------
 def check_password():
-    """Vérifie le mot de passe saisi et récupère l'identifiant utilisateur."""
+    """Vérifie le mot de passe saisi et récupère l'identifiant utilisateur (la clé)."""
     def password_entered():
         user_pwd = st.session_state["password_input"]
         passwords_dict = st.secrets.get("passwords", {})
@@ -65,7 +62,7 @@ if not check_password():
     st.stop()
 
 # ---------------------------------------------------------
-# AFFICHAGE DU MESSAGE ET BOUTON DE DECONNEXION (BARRE LATERALE)
+# AFFICHAGE DU MESSAGE ET BOUTON DE DECONNEXION
 # ---------------------------------------------------------
 current_user = st.session_state.get("user_name", "Utilisateur")
 st.sidebar.markdown(f"**Bienvenue {current_user}**")
@@ -348,17 +345,21 @@ body {{
 </body>
 </html>"""
 
-async def create_pdf_bytes(html_content):
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        page = await browser.new_page()
-        await page.set_content(html_content)
-        pdf_bytes = await page.pdf(
+def create_pdf_bytes(html_content):
+    """Génération du PDF via Playwright en mode synchrone (compatible Windows et Streamlit)."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--no-sandbox", "--disable-setuid-sandbox"]
+        )
+        page = browser.new_page()
+        page.set_content(html_content, wait_until="networkidle")
+        pdf_bytes = page.pdf(
             format="A4",
             print_background=True,
             margin={"top": "8mm", "bottom": "8mm", "left": "12mm", "right": "12mm"}
         )
-        await browser.close()
+        browser.close()
         return pdf_bytes
 
 # ==========================================
@@ -404,7 +405,7 @@ if df is not None:
         
         if st.button("⚙️ Générer la fiche PDF", type="primary", use_container_width=True):
             with st.spinner("Génération du PDF par Playwright en cours..."):
-                pdf_bytes = asyncio.run(create_pdf_bytes(html_payload))
+                pdf_bytes = create_pdf_bytes(html_payload)
                 filename = f"fiche_typterre_{selected_id}.pdf"
                 
                 with open(filename, "wb") as f:
@@ -424,5 +425,3 @@ if df is not None:
         st.subheader("Aperçu du rendu")
         if html_payload:
             st.components.v1.html(html_payload, height=680, scrolling=True)
-
-            ## commit test_typterre_alsace

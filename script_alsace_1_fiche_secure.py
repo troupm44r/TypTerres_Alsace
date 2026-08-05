@@ -319,7 +319,7 @@ body {{
             </tr>
             <tr>
                 <th>N° Horizon (nom)</th>
-                {"".join([f"<td>Surface<br>{h['num']}</td>" for h in horizons])}
+                {"".join([f"<td>{h['num']}</td>" for h in horizons])}
                 {"".join(["<td>H" + str(i+len(horizons)+1) + " ()</td>" for i in range(5 - len(horizons))])}
             </tr>
         </thead>

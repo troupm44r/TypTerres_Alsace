@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 from playwright.sync_api import sync_playwright
 # from weasyprint import HTML
-from weasyprint import HTML
+
 
 st.set_page_config(
     page_title="Générateur Fiches Typterres",

@@ -21,14 +21,14 @@ def check_password():
     def password_entered():
         user_pwd = st.session_state["password_input"]
         passwords_dict = st.secrets.get("passwords", {})
-        
+
         # Recherche du nom d'utilisateur correspondant au mot de passe
         matched_user = None
         for username, password in passwords_dict.items():
             if user_pwd == password:
                 matched_user = username
                 break
-        
+
         if matched_user:
             st.session_state["password_correct"] = True
             st.session_state["user_name"] = matched_user  # Stocke "admin", "ServiceMTA", etc.
@@ -40,9 +40,9 @@ def check_password():
         # Premier affichage : formulaire de connexion
         st.title("🔒 Accès Protégé")
         st.text_input(
-            "Veuillez saisir le mot de passe d'accès :", 
-            type="password", 
-            on_change=password_entered, 
+            "Veuillez saisir le mot de passe d'accès :",
+            type="password",
+            on_change=password_entered,
             key="password_input"
         )
         return False
@@ -50,9 +50,9 @@ def check_password():
         # Mot de passe incorrect
         st.title("🔒 Accès Protégé")
         st.text_input(
-            "Veuillez saisir le mot de passe d'accès :", 
-            type="password", 
-            on_change=password_entered, 
+            "Veuillez saisir le mot de passe d'accès :",
+            type="password",
+            on_change=password_entered,
             key="password_input"
         )
         st.error("😕 Mot de passe incorrect.")
@@ -106,7 +106,7 @@ def get_base64_logos_html(image_paths):
             img_tags.append(f'<img src="{src}" alt="Logo" />')
         else:
             st.toast(f"⚠️ Logo introuvable : {path}", icon="⚠️")
-    
+
     if img_tags:
         return f'<div class="logos-container">{"".join(img_tags)}</div>'
     return ""
@@ -138,7 +138,7 @@ def load_dataset():
 df = load_dataset()
 
 DRAINAGE_MAP = {
-    1.0: "Excessif", 2.0: "Bon", 3.0: "Modéré", 
+    1.0: "Excessif", 2.0: "Bon", 3.0: "Modéré",
     4.0: "Imparfait", 5.0: "Pauvre", 6.0: "Très pauvre"
 }
 
@@ -151,32 +151,32 @@ def generate_html(df_data, target_id, logos_html=""):
     sub_df = df_data[df_data[COL_ID] == target_id].sort_values('Numéro couche Typterres')
     if sub_df.empty:
         return None
-    
+
     first = sub_df.iloc[0]
-    
+
     titre_typterre = f"TYPTERRE {int(first[COL_ID])}"
     nom_typterre = str(first['NOM TYPTERRES (70)']) if pd.notna(first['NOM TYPTERRES (70)']) else ""
     ref_pedo = str(first['NOM REFERENTIEL PEDOLOGIQUE']) if pd.notna(first['NOM REFERENTIEL PEDOLOGIQUE']) else ""
     petite_region = str(first['Petite Région Typterres (11)']) if pd.notna(first['Petite Région Typterres (11)']) else ""
     mat_parental = str(first['NOM MATERIAU PARENTAL']) if pd.notna(first['NOM MATERIAU PARENTAL']) else ""
-    
+
     surface = f"{int(first['Surface Totale ha Typterres Simp'])} ha" if pd.notna(first['Surface Totale ha Typterres Simp']) else ""
     correspondance_typt = str(first['Identifiant sous TypSimplifié (70)']) if pd.notna(first['Identifiant sous TypSimplifié (70)']) else ""
     guide_sols = str(first['exemple FICHE GUIDE des sols']) if pd.notna(first['exemple FICHE GUIDE des sols']) else ""
     directive_nitrates = str(first['correspondance GREN Directive Nitrates']) if pd.notna(first['correspondance GREN Directive Nitrates']) else ""
-    
+
     ep_val, ep_min, ep_max = first["Epaisseur Sol"], first["Epaisseur Sol 'min'"], first["Epaisseur Sol 'max'"]
     epaisseur = f"{int(ep_val)} cm (min : {int(ep_min)} cm , max : {int(ep_max)} cm)" if pd.notna(ep_val) else ""
-    
+
     pierrosite_val = str(first['Pierrosité surface']) if pd.notna(first['Pierrosité surface']) else ""
     pierrosite_txt = PIERROSITE_MAP.get(pierrosite_val, pierrosite_val)
-        
+
     ru_val, ru_min, ru_max = first['Estimation RU du Sol (mm)'], first["Estimation RU du Sol 'min' (mm)"], first["Estimation RU du Sol 'max' (mm)"]
     ru_sol = f"{round(ru_val)} mm ( min : {round(ru_min)} mm , max : {round(ru_max)} mm)" if pd.notna(ru_val) else ""
-    
+
     effervescence = str(first['Effervescence en clair']) if pd.notna(first['Effervescence en clair']) else ""
     drainage_txt = DRAINAGE_MAP.get(first['Drainage naturel'], str(first['Drainage naturel']) if pd.notna(first['Drainage naturel']) else "")
-    
+
     # Image de la carte alsace
     map_src = get_base64_img_src(MAP_IMAGE_PATH)
     if map_src:
@@ -211,13 +211,13 @@ def generate_html(df_data, target_id, logos_html=""):
 *, *::before, *::after {{ box-sizing: border-box; }}
 
 html, body {{ height: 100%; margin: 0; padding: 0; }}
-body {{ 
-    font-family: Arial, sans-serif; 
-    color: #111; 
-    font-size: 8.5pt; 
-    line-height: 1.2; 
-    display: flex; 
-    flex-direction: column; 
+body {{
+    font-family: Arial, sans-serif;
+    color: #111;
+    font-size: 8.5pt;
+    line-height: 1.2;
+    display: flex;
+    flex-direction: column;
 }}
 
 .content-wrapper {{ flex: 1 0 auto; }}
@@ -231,12 +231,12 @@ body {{
 .label-cyan {{ color: #00a896; font-weight: bold; }}
 
 /* Style pour la carte Alsace (Agrandie) */
-.map-img {{ 
-    width: 100%; 
-    max-height: 220px; 
-    object-fit: contain; 
-    margin-top: 6px; 
-    display: block; 
+.map-img {{
+    width: 100%;
+    max-height: 220px;
+    object-fit: contain;
+    margin-top: 6px;
+    display: block;
 }}
 
 .section-title {{ text-align: center; color: #b25900; font-size: 11pt; font-weight: bold; margin: 6px 0 4px 0; }}
@@ -250,24 +250,24 @@ body {{
 .footer-note {{ font-size: 6.8pt; font-style: italic; color: #333; margin-top: 4px; }}
 
 /* Zone footer calée automatiquement en bas de page */
-.footer-wrapper {{ 
-    margin-top: auto; 
-    padding-top: 4px; 
-    width: 100%; 
+.footer-wrapper {{
+    margin-top: auto;
+    padding-top: 4px;
+    width: 100%;
 }}
 
-.logos-container {{ 
-    width: 100%; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    padding-top: 4px; 
-    border-top: 1px solid #ccc; 
+.logos-container {{
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 4px;
+    border-top: 1px solid #ccc;
 }}
-.logos-container img {{ 
-    max-height: 36px; 
-    width: auto; 
-    object-fit: contain; 
+.logos-container img {{
+    max-height: 36px;
+    width: auto;
+    object-fit: contain;
 }}
 </style>
 </head>
@@ -347,26 +347,26 @@ body {{
 </body>
 </html>"""
 
-# def create_pdf_bytes(html_content):
-#     """Génération du PDF via Playwright en mode synchrone (compatible Windows et Streamlit)."""
-#     with sync_playwright() as p:
-#         browser = p.chromium.launch(
-#             headless=True,
-#             args=["--no-sandbox", "--disable-setuid-sandbox"]
-#         )
-#         page = browser.new_page()
-#         page.set_content(html_content, wait_until="networkidle")
-#         pdf_bytes = page.pdf(
-#             format="A4",
-#             print_background=True,
-#             margin={"top": "8mm", "bottom": "8mm", "left": "12mm", "right": "12mm"}
-#         )
-#         browser.close()
-#         return pdf_bytes
-
-
 def create_pdf_bytes(html_content):
-    return HTML(string=html_content).write_pdf()
+    """Génération du PDF via Playwright en mode synchrone (compatible Windows et Streamlit)."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--no-sandbox", "--disable-setuid-sandbox"]
+        )
+        page = browser.new_page()
+        page.set_content(html_content, wait_until="networkidle")
+        pdf_bytes = page.pdf(
+            format="A4",
+            print_background=True,
+            margin={"top": "8mm", "bottom": "8mm", "left": "12mm", "right": "12mm"}
+        )
+        browser.close()
+        return pdf_bytes
+
+
+# def create_pdf_bytes(html_content):
+#     return HTML(string=html_content).write_pdf()
 
 # ==========================================
 # Interface Streamlit
@@ -382,7 +382,7 @@ if df is not None:
     ordered_ids = [int(x) for x in pd.unique(valid_series)]
 
     st.sidebar.header("🕹️ Contrôles")
-    
+
     selected_id = st.sidebar.selectbox(
         "Choisissez l'identifiant Typterre :",
         options=ordered_ids,
@@ -401,24 +401,24 @@ if df is not None:
 
     with col_left:
         st.subheader(f"📄 Typterre {selected_id}")
-        
+
         sub = df[df[COL_ID] == selected_id]
         nom_sol = sub['NOM TYPTERRES (70)'].iloc[0] if pd.notna(sub['NOM TYPTERRES (70)'].iloc[0]) else "N/A"
         ref_sol = sub['NOM REFERENTIEL PEDOLOGIQUE'].iloc[0] if pd.notna(sub['NOM REFERENTIEL PEDOLOGIQUE'].iloc[0]) else "N/A"
         nb_horizons = len(sub)
 
         st.info(f"**Nom :** {nom_sol}\n\n**Référentiel :** {ref_sol}\n\n**Horizons :** {nb_horizons} couche(s)")
-        
+
         if st.button("⚙️ Générer la fiche PDF", type="primary", use_container_width=True):
             with st.spinner("Génération du PDF par Playwright en cours..."):
                 pdf_bytes = create_pdf_bytes(html_payload)
                 filename = f"fiche_typterre_{selected_id}.pdf"
-                
+
                 with open(filename, "wb") as f:
                     f.write(pdf_bytes)
-                
+
                 st.success(f"Fiche générée avec succès : `{filename}`")
-                
+
                 st.download_button(
                     label="📥 Télécharger le fichier PDF",
                     data=pdf_bytes,

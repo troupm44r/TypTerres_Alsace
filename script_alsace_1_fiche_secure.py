@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 from playwright.async_api import async_playwright
 
+
 st.set_page_config(
     page_title="Générateur Fiches Typterres",
     page_icon="🌱",
@@ -347,6 +348,8 @@ body {{
 
 </body>
 </html>"""
+
+
 
 async def create_pdf_bytes(html_content):
     async with async_playwright() as p:

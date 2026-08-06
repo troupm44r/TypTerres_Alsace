@@ -5,7 +5,7 @@ import base64
 import pandas as pd
 import streamlit as st
 from playwright.async_api import async_playwright
-from weasyprint import HTML
+
 
 
 st.set_page_config(
@@ -351,23 +351,20 @@ body {{
 </html>"""
 
 
-def create_pdf_bytes(html_content): 
-    pdf_bytes = HTML(string=html_content).write_pdf()
-    return pdf_bytes
 
 
-# async def create_pdf_bytes(html_content):
-#     async with async_playwright() as p:
-#         browser = await p.chromium.launch()
-#         page = await browser.new_page()
-#         await page.set_content(html_content)
-#         pdf_bytes = await page.pdf(
-#             format="A4",
-#             print_background=True,
-#             margin={"top": "8mm", "bottom": "8mm", "left": "12mm", "right": "12mm"}
-#         )
-#         await browser.close()
-#         return pdf_bytes
+async def create_pdf_bytes(html_content):
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page()
+        await page.set_content(html_content)
+        pdf_bytes = await page.pdf(
+            format="A4",
+            print_background=True,
+            margin={"top": "8mm", "bottom": "8mm", "left": "12mm", "right": "12mm"}
+        )
+        await browser.close()
+        return pdf_bytes
 
 # ==========================================
 # Interface Streamlit

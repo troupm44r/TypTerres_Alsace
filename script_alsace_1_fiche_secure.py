@@ -331,24 +331,13 @@ def generate_html(df_data, target_id, logos_html=""):
 }}
 *, *::before, *::after {{ box-sizing: border-box; }}
 
-html, body {{
-    height: 100%;
-    margin: 0;
-    padding: 0;
-}}
-
 body {{
     font-family: Arial, sans-serif;
     color: #111;
     font-size: 8.5pt;
     line-height: 1.2;
-    position: relative;
-}}
-
-/* Conteneur principal pour espacer le contenu du pied de page */
-.page-container {{
-    min-height: 100%;
-    padding-bottom: 75px; /* Laisse de la place pour le footer fixe en bas */
+    margin: 0;
+    padding: 0;
 }}
 
 .header-top {{ text-align: right; font-weight: bold; font-size: 14pt; margin-bottom: 4px; }}
@@ -361,26 +350,26 @@ body {{
 
 .map-img {{
     width: 100%;
-    max-height: 190px;
+    max-height: 180px;
     object-fit: contain;
-    margin-top: 6px;
+    margin-top: 4px;
     display: block;
 }}
 
-.section-title {{ text-align: center; color: #b25900; font-size: 11pt; font-weight: bold; margin: 8px 0 4px 0; }}
-.params-table {{ width: 100%; border-collapse: collapse; margin-bottom: 6px; }}
+.section-title {{ text-align: center; color: #b25900; font-size: 11pt; font-weight: bold; margin: 6px 0 4px 0; }}
+.params-table {{ width: 100%; border-collapse: collapse; margin-bottom: 4px; }}
 .params-table td {{ width: 50%; vertical-align: top; padding: 2px 4px; }}
 
 /* TABLEAU AVEC LIGNES CONTINUES EN SOLIDE (1px solid) */
 .data-table {{ 
     width: 100%; 
     border-collapse: collapse; 
-    margin-top: 6px; 
+    margin-top: 4px; 
     margin-bottom: 6px; 
     border: 1px solid #777;
 }}
 .data-table th, .data-table td {{ 
-    border: 1px solid #777; /* Lignes continues au lieu de dashed */
+    border: 1px solid #777;
     padding: 3px 4px; 
     font-size: 7.5pt; 
     text-align: left; 
@@ -390,27 +379,25 @@ body {{
     font-weight: bold; 
 }}
 
-/* FOOTER POSITIONNÉ TOUT EN BAS DE LA PAGE */
-.footer-fixed {{
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
+/* PIED DE PAGE PROPRE ET SANS CHEVAUCHEMENT (ÉCRAN ET PDF) */
+.footer-block {{
+    margin-top: 10px;
     width: 100%;
+    clear: both;
 }}
 
 .footer-note {{ 
     font-size: 6.8pt; 
     font-style: italic; 
     color: #333; 
-    margin-bottom: 4px; 
+    margin-bottom: 6px; 
 }}
 
 .logos-container {{
     width: 100%;
     padding-top: 4px;
     border-top: 1px solid #aaa;
-    text-align: justify;
+    text-align: left;
 }}
 .logos-container img {{
     max-height: 32px;
@@ -423,73 +410,71 @@ body {{
 </head>
 <body>
 
-<div class="page-container">
-    <div class="header-top">{titre_typterre}</div>
-    <div class="title-box">{nom_typterre}</div>
-    <div class="subtitle-box">{ref_pedo}</div>
+<div class="header-top">{titre_typterre}</div>
+<div class="title-box">{nom_typterre}</div>
+<div class="subtitle-box">{ref_pedo}</div>
 
-    <table class="info-grid">
+<table class="info-grid">
+    <tr>
+        <td style="width: 42%;">
+            <span class="label-cyan">Petite Région :</span><br>{petite_region}<br>
+            {map_html}
+        </td>
+        <td style="width: 58%;">
+            <span class="label-cyan">Matériau parental :</span> {mat_parental}<br><br>
+            <span class="label-cyan">Surface occupée par le {titre_typterre} :</span> {surface}<br><br><br>
+            <span class="label-cyan">Correspondances Typterres :</span> {correspondance_typt}<br><br>
+            <span class="label-cyan">Guide des sols :</span> {guide_sols}<br><br>
+            <span class="label-cyan">Directive Nitrates GREN :</span> {directive_nitrates}
+        </td>
+    </tr>
+</table>
+
+<div class="section-title">Caractéristiques physico-chimiques</div>
+
+<table class="params-table">
+    <tr>
+        <td>
+            <span class="label-cyan">Epaisseur du Sol :</span> {epaisseur}<br><br>
+            <span class="label-cyan">Estimation réserve en eau du sol :</span><br>{ru_sol}<br><br>
+            <span class="label-cyan">Drainage naturel :</span> {drainage_txt}
+        </td>
+        <td>
+            <span class="label-cyan">Pierrosité en surface :</span> {pierrosite_txt}<br><br>
+            <span class="label-cyan">Effervescence en surface :</span> {effervescence}
+        </td>
+    </tr>
+</table>
+
+<table class="data-table">
+    <thead>
         <tr>
-            <td style="width: 42%;">
-                <span class="label-cyan">Petite Région :</span><br>{petite_region}<br>
-                {map_html}
-            </td>
-            <td style="width: 58%;">
-                <span class="label-cyan">Matériau parental :</span> {mat_parental}<br><br>
-                <span class="label-cyan">Surface occupée par le {titre_typterre} :</span> {surface}<br><br><br>
-                <span class="label-cyan">Correspondances Typterres :</span> {correspondance_typt}<br><br>
-                <span class="label-cyan">Guide des sols :</span> {guide_sols}<br><br>
-                <span class="label-cyan">Directive Nitrates GREN :</span> {directive_nitrates}
-            </td>
+            <th style="width: 35%;">Propriétés</th>
+            <th colspan="5">Horizons de sol</th>
         </tr>
-    </table>
-
-    <div class="section-title">Caractéristiques physico-chimiques</div>
-
-    <table class="params-table">
         <tr>
-            <td>
-                <span class="label-cyan">Epaisseur du Sol :</span> {epaisseur}<br><br>
-                <span class="label-cyan">Estimation réserve en eau du sol :</span><br>{ru_sol}<br><br>
-                <span class="label-cyan">Drainage naturel :</span> {drainage_txt}
-            </td>
-            <td>
-                <span class="label-cyan">Pierrosité en surface :</span> {pierrosite_txt}<br><br>
-                <span class="label-cyan">Effervescence en surface :</span> {effervescence}
-            </td>
+            <th>N° Horizon (nom)</th>
+            {"".join([f"<td>{h['num']}</td>" for h in horizons])}
+            {"".join(["<td>H" + str(i+len(horizons)+1) + " ()</td>" for i in range(5 - len(horizons))])}
         </tr>
-    </table>
+    </thead>
+    <tbody>
+        <tr><td>Epaisseur (cm)</td>{"".join([f"<td>{h['ep']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
+        <tr><td>Texture (classe GEPPA)</td>{"".join([f"<td>{h['geppa']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
+        <tr><td>Argile (%)</td>{"".join([f"<td>{h['argile']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
+        <tr><td>Limons (%)</td>{"".join([f"<td>{h['limon']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
+        <tr><td>Sables (%)</td>{"".join([f"<td>{h['sable']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
+        <tr><td>Eléments grossiers (abondance vol, %)</td>{"".join([f"<td>{h['eg']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
+        <tr><td>MO (%)</td>{"".join([f"<td>{h['mo']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
+        <tr><td>pH</td>{"".join([f"<td>{h['ph']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
+        <tr><td>Calcaire total (g/kg)</td>{"".join([f"<td>{h['calc']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
+        <tr><td>CEC (cmol/kg)</td>{"".join([f"<td>{h['cec']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
+        <tr><td>Densité apparente</td>{"".join([f"<td>{h['da']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
+        <tr><td>couleur</td>{"".join([f"<td>{h['couleur']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
+    </tbody>
+</table>
 
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th style="width: 35%;">Propriétés</th>
-                <th colspan="5">Horizons de sol</th>
-            </tr>
-            <tr>
-                <th>N° Horizon (nom)</th>
-                {"".join([f"<td>{h['num']}</td>" for h in horizons])}
-                {"".join(["<td>H" + str(i+len(horizons)+1) + " ()</td>" for i in range(5 - len(horizons))])}
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td>Epaisseur (cm)</td>{"".join([f"<td>{h['ep']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
-            <tr><td>Texture (classe GEPPA)</td>{"".join([f"<td>{h['geppa']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
-            <tr><td>Argile (%)</td>{"".join([f"<td>{h['argile']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
-            <tr><td>Limons (%)</td>{"".join([f"<td>{h['limon']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
-            <tr><td>Sables (%)</td>{"".join([f"<td>{h['sable']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
-            <tr><td>Eléments grossiers (abondance vol, %)</td>{"".join([f"<td>{h['eg']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
-            <tr><td>MO (%)</td>{"".join([f"<td>{h['mo']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
-            <tr><td>pH</td>{"".join([f"<td>{h['ph']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
-            <tr><td>Calcaire total (g/kg)</td>{"".join([f"<td>{h['calc']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
-            <tr><td>CEC (cmol/kg)</td>{"".join([f"<td>{h['cec']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
-            <tr><td>Densité apparente</td>{"".join([f"<td>{h['da']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
-            <tr><td>couleur</td>{"".join([f"<td>{h['couleur']}</td>" for h in horizons])}{"".join(["<td></td>" for _ in range(5 - len(horizons))])}</tr>
-        </tbody>
-    </table>
-</div>
-
-<div class="footer-fixed">
+<div class="footer-block">
     <div class="footer-note">Ces résultats sont calculés à partir des données du Référentiel Régional Pédologique Alsace. Ils sont indicatifs et ne se substituent pas à une analyse de terre.</div>
     {logos_html}
 </div>

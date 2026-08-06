@@ -331,13 +331,14 @@ def generate_html(df_data, target_id, logos_html=""):
 }}
 *, *::before, *::after {{ box-sizing: border-box; }}
 
-body {{
+html, body {{
+    height: 100%;
+    margin: 0;
+    padding: 0;
     font-family: Arial, sans-serif;
     color: #111;
     font-size: 8.5pt;
     line-height: 1.2;
-    margin: 0;
-    padding: 0;
 }}
 
 .header-top {{ text-align: right; font-weight: bold; font-size: 14pt; margin-bottom: 4px; }}
@@ -360,7 +361,6 @@ body {{
 .params-table {{ width: 100%; border-collapse: collapse; margin-bottom: 4px; }}
 .params-table td {{ width: 50%; vertical-align: top; padding: 2px 4px; }}
 
-/* TABLEAU AVEC LIGNES CONTINUES EN SOLIDE (1px solid) */
 .data-table {{ 
     width: 100%; 
     border-collapse: collapse; 
@@ -379,18 +379,17 @@ body {{
     font-weight: bold; 
 }}
 
-/* PIED DE PAGE PROPRE ET SANS CHEVAUCHEMENT (ÉCRAN ET PDF) */
+/* PIED DE PAGE ET LOGOS */
 .footer-block {{
-    margin-top: 10px;
     width: 100%;
-    clear: both;
+    margin-top: 10px;
 }}
 
 .footer-note {{ 
     font-size: 6.8pt; 
     font-style: italic; 
     color: #333; 
-    margin-bottom: 6px; 
+    margin-bottom: 4px; 
 }}
 
 .logos-container {{
@@ -405,6 +404,17 @@ body {{
     display: inline-block;
     vertical-align: middle;
     margin-right: 6px;
+}}
+
+/* ADAPTATION SPÉCIFIQUE EN PDF / IMPRESSION */
+@media print {{
+    .footer-block {{
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        margin-top: 0;
+    }}
 }}
 </style>
 </head>

@@ -365,7 +365,7 @@ html, body {{
     width: 100%; 
     border-collapse: collapse; 
     margin-top: 4px; 
-    margin-bottom: 6px; 
+    margin-bottom: 4px; 
     border: 1px solid #777;
 }}
 .data-table th, .data-table td {{ 
@@ -379,41 +379,38 @@ html, body {{
     font-weight: bold; 
 }}
 
-/* PIED DE PAGE ET LOGOS */
-.footer-block {{
-    width: 100%;
-    margin-top: 10px;
-}}
-
+/* TEXTE INFORMATIF DIRECTEMENT SOUS LE TABLEAU */
 .footer-note {{ 
     font-size: 6.8pt; 
     font-style: italic; 
     color: #333; 
-    margin-bottom: 4px; 
+    margin-top: 4px;
+    margin-bottom: 8px; 
+    text-align: left;
 }}
 
+/* CONTAINER LOGOS */
 .logos-container {{
     width: 100%;
     padding-top: 4px;
     border-top: 1px solid #aaa;
-    text-align: left;
+    text-align: center; /* Centrage des logos */
 }}
 .logos-container img {{
     max-height: 32px;
     width: auto;
     display: inline-block;
     vertical-align: middle;
-    margin-right: 6px;
+    margin: 0 4px;
 }}
 
-/* ADAPTATION SPÉCIFIQUE EN PDF / IMPRESSION */
+/* ANCRAGE DES LOGOS EN BAS DE PAGE EN PDF */
 @media print {{
-    .footer-block {{
+    .logos-container {{
         position: fixed;
         bottom: 0;
         left: 0;
         right: 0;
-        margin-top: 0;
     }}
 }}
 </style>
@@ -484,10 +481,9 @@ html, body {{
     </tbody>
 </table>
 
-<div class="footer-block">
-    <div class="footer-note">Ces résultats sont calculés à partir des données du Référentiel Régional Pédologique Alsace. Ils sont indicatifs et ne se substituent pas à une analyse de terre.</div>
-    {logos_html}
-</div>
+<div class="footer-note">Ces résultats sont calculés à partir des données du Référentiel Régional Pédologique Alsace. Ils sont indicatifs et ne se substituent pas à une analyse de terre.</div>
+
+{logos_html}
 
 </body>
 </html>"""

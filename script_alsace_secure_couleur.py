@@ -228,23 +228,25 @@ def read_ar_fills():
 
 
 def get_couleur_info(sub_df):
-  """Récupère le code couleur HEX situé dans la colonne 'couleur' tout à droite (colonne 44)."""
-  # 1. Recherche prioritaire de la colonne tout à droite (index 43 / 44e colonne)
+  """Récupère le code HEX dans la colonne AR (44e colonne / index 43)."""
+  # Cible directement la colonne AR (index 43)
   if len(sub_df.columns) > COL_COULEUR_INDEX:
     col_target = sub_df.columns[COL_COULEUR_INDEX]
     for idx, row in sub_df.iterrows():
-      c = format_hex_color(row[col_target])
+      val = row[col_target]
+      c = format_hex_color(val)
       if c:
-        return col_target, row[col_target], c, "code hex trouvé (colonne AR)"
+        return "AR (couleur)", val, c, "code hex de la colonne AR"
 
-  # 2. Secours : parcourt les colonnes de DROITE à GAUCHE pour trouver un code #HEX
+  # Secours : parcourt les colonnes en partant de la droite
   for col in reversed(sub_df.columns):
     for idx, row in sub_df.iterrows():
-      c = format_hex_color(row[col])
+      val = row[col]
+      c = format_hex_color(val)
       if c:
-        return col, row[col], c, "code hex trouvé"
+        return str(col), val, c, "code hex trouvé"
 
-  return "couleur", None, COULEUR_PAR_DEFAUT, "couleur par défaut"
+  return "AR (couleur)", None, COULEUR_PAR_DEFAUT, "couleur par défaut"
 
 
 def generate_html(df_data, target_id, logos_html=""):

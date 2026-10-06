@@ -228,27 +228,25 @@ def read_ar_fills():
 
 
 def get_couleur_info(sub_df):
-  """Récupère le code couleur HEX (#RRGGBB) situé dans les colonnes tout à droite."""
-  # Parcourt les colonnes de droite à gauche
+  """Récupère le code HEX dans la colonne 'couleur' située tout à droite."""
+  # Parcourt les colonnes de DROITE à GAUCHE
   for col in reversed(sub_df.columns):
-    for idx, row in sub_df.iterrows():
-      val = row[col]
-      c = format_hex_color(val)
-      if c:
-        return col, val, c, "code hex trouvé"
+    if str(col).strip().lower() in ["couleur", "couleur ar", "ar"]:
+      for idx, row in sub_df.iterrows():
+        val = row[col]
+        c = format_hex_color(val)
+        if c:
+          return col, val, c, "code hex trouvé"
 
-  # Si aucun code HEX n'est écrit, vérifie le remplissage de cellule Excel
-  fills = read_ar_fills()
-  col_target = (
-      sub_df.columns[COL_COULEUR_INDEX]
-      if len(sub_df.columns) > COL_COULEUR_INDEX
-      else sub_df.columns[-1]
-  )
-  for idx in sub_df.index:
-    if idx in fills:
-      return col_target, sub_df.loc[idx, col_target], fills[idx], "remplissage de cellule"
+  # Sécurité : test direct de la toute dernière colonne
+  last_col = sub_df.columns[-1]
+  for idx, row in sub_df.iterrows():
+    val = row[last_col]
+    c = format_hex_color(val)
+    if c:
+      return last_col, val, c, "code hex (dernière colonne)"
 
-  return "Non trouvée", None, COULEUR_PAR_DEFAUT, "couleur par défaut"
+  return "couleur", None, COULEUR_PAR_DEFAUT, "couleur par défaut"
 
 
 def generate_html(df_data, target_id, logos_html=""):

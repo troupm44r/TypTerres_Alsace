@@ -220,6 +220,92 @@ def text_color_for(bg_hex):
   return "#111111" if luminance > 150 else "#ffffff"
 
 
+MUNSELL_BASE = {
+    "R": (170, 60, 55),
+    "YR": (165, 105, 55),
+    "Y": (180, 160, 60),
+    "GY": (130, 150, 70),
+    "G": (80, 140, 80),
+    "BG": (70, 140, 130),
+    "B": (70, 110, 160),
+    "PB": (100, 90, 160),
+    "P": (130, 80, 140),
+    "RP": (160, 70, 110),
+}
+
+
+def munsell_to_hex(v):
+  """Approximation d'une notation Munsell (ex. '10YR 3/2') en couleur hex."""
+  m = re.search(
+      r"(\d+(?:[.,]\d+)?)\s*(YR|GY|BG|PB|RP|R|Y|G|B|P)\s*(\d+(?:[.,]\d+)?)\s*/\s*(\d+(?:[.,]\d+)?)",
+      v.upper(),
+  )
+  if not m:
+    return None
+  hue = m.group(2)
+  value = float(m.group(3).replace(",", "."))
+  chroma = float(m.group(4).replace(",", "."))
+  base = MUNSELL_BASE[hue]
+  gray = min(max(value / 10 * 255, 0), 255)
+  mix = min(chroma / 6, 1)
+  rgb = []
+  for c in base:
+    bn = min(c * value / 5, 255)
+    rgb.append(int(round(gray * (1 - mix) + bn * mix)))
+  return "#{:02x}{:02x}{:02x}".format(*rgb)
+
+
+def couleur_depuis_valeur(value):
+  """Retourne une couleur hex à partir d'un texte (hex, RVB, nom, Munsell)."""
+  if pd.isna(value):
+    return None
+  v = str(value).strip()
+  c = normalize_color(v, default=None)
+  if c:
+    return c
+  low = v.lower()
+  for key in sorted(COULEURS_NOMMEES, key=len, reverse=True):
+    if key in low:
+      return COULEURS_NOMMEES[key]
+  return munsell_to_hex(v)
+
+
+@st.cache_data
+def read_k_fills():
+  """Couleurs de remplissage des cellules de la colonne K (clé = index du DataFrame)."""
+  fills = {}
+  try:
+    from openpyxl import load_workbook
+
+    ws = load_workbook(EXCEL_PATH, data_only=True).active
+    for r in range(2, ws.max_row + 1):
+      f = ws.cell(row=r, column=COL_COULEUR_INDEX + 1).fill
+      if f is not None and f.fill_type == "solid":
+        rgb = f.fgColor.rgb
+        if isinstance(rgb, str) and len(rgb) == 8 and rgb[2:].upper() != "000000":
+          fills[r - 2] = "#" + rgb[2:]
+  except Exception:
+    pass
+  return fills
+
+
+def get_couleur_info(sub_df):
+  """Renvoie (nom de colonne, valeur brute, couleur hex, source)."""
+  col_name = sub_df.columns[COL_COULEUR_INDEX]
+  fills = read_k_fills()
+  raw = None
+  for idx, row in sub_df.iterrows():
+    value = row.iloc[COL_COULEUR_INDEX]
+    if raw is None and pd.notna(value):
+      raw = value
+    c = couleur_depuis_valeur(value)
+    if c:
+      return col_name, value, c, "valeur de la cellule"
+    if idx in fills:
+      return col_name, value, fills[idx], "remplissage de la cellule"
+  return col_name, raw, COULEUR_PAR_DEFAUT, "couleur par défaut (rien de reconnu)"
+
+
 def generate_html(df_data, target_id, logos_html=""):
   sub_df = df_data[df_data[COL_ID] == target_id].sort_values(
       "Numéro couche Typterres"
@@ -252,7 +338,7 @@ def generate_html(df_data, target_id, logos_html=""):
   )
 
   # Couleur issue de la colonne K (à la place du bleu fixe)
-  couleur_fond = normalize_color(first.iloc[COL_COULEUR_INDEX])
+  _, _, couleur_fond, _ = get_couleur_info(sub_df)
   couleur_texte = text_color_for(couleur_fond)
 
   surface = (
@@ -614,6 +700,12 @@ if df is not None:
     st.info(
         f"**Nom :** {nom_sol}\n\n**Référentiel :** {ref_sol}\n\n**Horizons :**"
         f" {nb_horizons} couche(s)"
+    )
+
+    k_name, k_raw, k_hex, k_source = get_couleur_info(sub)
+    st.caption(
+        f"🎨 Colonne K : « {k_name} » | valeur lue : `{k_raw}` | couleur"
+        f" appliquée : `{k_hex}` ({k_source})"
     )
 
     if st.button(

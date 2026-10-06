@@ -170,49 +170,27 @@ PIERROSITE_MAP = {
 }
 
 # ---------------------------------------------------------
-# GESTION DE LA COULEUR (COLONNE AR / COULEUR)
+# GESTION DE LA COULEUR HEXADÉCIMALE (#XXXXXX)
 # ---------------------------------------------------------
-COULEUR_PAR_DEFAUT = "#00a896"  # couleur par défaut si cellule vide ou introuvable
-
-COULEURS_NOMMEES = {
-    "brun": "#8b5a2b",
-    "brun foncé": "#4e342e",
-    "brun clair": "#c4a484",
-    "beige": "#e8d9b5",
-    "ocre": "#cc7722",
-    "jaune": "#f2d03b",
-    "rouge": "#b3392b",
-    "gris": "#9e9e9e",
-    "gris clair": "#d6d6d6",
-    "noir": "#222222",
-    "blanc": "#ffffff",
-    "orange": "#e8892b",
-    "olive": "#808040",
-    "vert": "#6a994e",
-}
+COULEUR_PAR_DEFAUT = "#00a896"
 
 
-def normalize_color(value, default=COULEUR_PAR_DEFAUT):
-  """Convertit la valeur de la colonne en couleur CSS hex (#RRGGBB)."""
-  if pd.isna(value):
-    return default
-  v = str(value).strip()
-  if re.fullmatch(r"#?[0-9a-fA-F]{6}", v):
-    return v if v.startswith("#") else f"#{v}"
-  if re.fullmatch(r"#?[0-9a-fA-F]{3}", v):
-    v = v.lstrip("#")
-    return "#" + "".join(c * 2 for c in v)
-  m = re.fullmatch(
-      r"\(?\s*(\d{1,3})\s*[,;]\s*(\d{1,3})\s*[,;]\s*(\d{1,3})\s*\)?", v
-  )
-  if m:
-    r, g, b = (min(int(x), 255) for x in m.groups())
-    return f"#{r:02x}{g:02x}{b:02x}"
-  return COULEURS_NOMMEES.get(v.lower(), default)
+def format_hex_color(val):
+  """Vérifie et formate directement le code hexadécimal (#RRGGBB)."""
+  if pd.isna(val):
+    return None
+  v = str(val).strip()
+  if not v:
+    return None
+  if not v.startswith("#"):
+    v = f"#{v}"
+  if re.fullmatch(r"#[0-9a-fA-F]{6}", v):
+    return v
+  return None
 
 
 def hex_to_rgba(hex_color, alpha=0.3):
-  """Convertit un code couleur Hex (#RRGGBB) en format CSS rgba(r, g, b, alpha)."""
+  """Convertit un code hex (#RRGGBB) en format CSS rgba(r, g, b, alpha)."""
   if not hex_color or not hex_color.startswith("#") or len(hex_color) != 7:
     return f"rgba(0, 168, 150, {alpha})"
   h = hex_color.lstrip("#")
@@ -228,56 +206,6 @@ def text_color_for(bg_hex):
   r, g, b = (int(h[i : i + 2], 16) for i in (0, 2, 4))
   luminance = 0.299 * r + 0.587 * g + 0.114 * b
   return "#111111" if luminance > 150 else "#ffffff"
-
-
-MUNSELL_BASE = {
-    "R": (170, 60, 55),
-    "YR": (165, 105, 55),
-    "Y": (180, 160, 60),
-    "GY": (130, 150, 70),
-    "G": (80, 140, 80),
-    "BG": (70, 140, 130),
-    "B": (70, 110, 160),
-    "PB": (100, 90, 160),
-    "P": (130, 80, 140),
-    "RP": (160, 70, 110),
-}
-
-
-def munsell_to_hex(v):
-  """Approximation d'une notation Munsell en couleur hex."""
-  m = re.search(
-      r"(\d+(?:[.,]\d+)?)\s*(YR|GY|BG|PB|RP|R|Y|G|B|P)\s*(\d+(?:[.,]\d+)?)\s*/\s*(\d+(?:[.,]\d+)?)",
-      v.upper(),
-  )
-  if not m:
-    return None
-  hue = m.group(2)
-  value = float(m.group(3).replace(",", "."))
-  chroma = float(m.group(4).replace(",", "."))
-  base = MUNSELL_BASE[hue]
-  gray = min(max(value / 10 * 255, 0), 255)
-  mix = min(chroma / 6, 1)
-  rgb = []
-  for c in base:
-    bn = min(c * value / 5, 255)
-    rgb.append(int(round(gray * (1 - mix) + bn * mix)))
-  return "#{:02x}{:02x}{:02x}".format(*rgb)
-
-
-def couleur_depuis_valeur(value):
-  """Retourne une couleur hex à partir d'un texte (hex, RVB, nom, Munsell)."""
-  if pd.isna(value):
-    return None
-  v = str(value).strip()
-  c = normalize_color(v, default=None)
-  if c:
-    return c
-  low = v.lower()
-  for key in sorted(COULEURS_NOMMEES, key=len, reverse=True):
-    if key in low:
-      return COULEURS_NOMMEES[key]
-  return munsell_to_hex(v)
 
 
 @st.cache_data
@@ -300,8 +228,7 @@ def read_ar_fills():
 
 
 def get_couleur_info(sub_df):
-  """Récupère la couleur renseignée dans la colonne AR ('couleur')."""
-  # Recherche dynamique par nom de colonne 'couleur' ou fallback sur l'index AR (43)
+  """Récupère directement la couleur HEX renseignée dans la colonne AR ('couleur')."""
   col_target = None
   for c in sub_df.columns:
     if str(c).strip().lower() in ["couleur", "couleur ar", "ar"]:
@@ -319,9 +246,10 @@ def get_couleur_info(sub_df):
     value = row[col_target]
     if raw is None and pd.notna(value):
       raw = value
-    c = couleur_depuis_valeur(value)
+
+    c = format_hex_color(value)
     if c:
-      return col_target, value, c, "valeur de la cellule"
+      return col_target, value, c, "valeur hex de la cellule"
     if idx in fills:
       return col_target, value, fills[idx], "remplissage de la cellule"
 
@@ -359,7 +287,7 @@ def generate_html(df_data, target_id, logos_html=""):
       else ""
   )
 
-  # Récupération de la couleur depuis la colonne AR
+  # Récupération directe de la couleur HEX depuis la colonne AR
   _, _, couleur_fond, _ = get_couleur_info(sub_df)
 
   # Couleur transparente (30% d'opacité) pour la title-box
@@ -690,7 +618,6 @@ def create_pdf_bytes(html_content):
     if pisa_status.err:
       return None
     return result.getvalue()
-
 
 # ==========================================
 # Interface Streamlit

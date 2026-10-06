@@ -232,13 +232,18 @@ def read_ar_fills():
   return fills
 
 
+# Nom de la colonne Excel contenant le code hex (colonne AR)
+# (« colonne_fond » accepté aussi, au cas où l'en-tête serait écrit ainsi)
+COL_FOND_NAMES = ("couleur_fond", "colonne_fond")
+
+
 def find_hex_column(df_):
   """Trouve la colonne qui contient les codes hex (#RRGGBB), quel que soit son nom exact."""
   best, best_n = None, 0
   for col in df_.columns:
     n = sum(1 for v in df_[col].dropna().head(300) if format_hex_color(v))
-    # priorité aux colonnes nommées « couleur » (casse/espaces ignorés)
-    if str(col).strip().lower() == "couleur" and n > 0:
+    # priorité à la colonne nommée « couleur_fond » (casse/espaces ignorés)
+    if str(col).strip().lower() in COL_FOND_NAMES and n > 0:
       return col
     if n > best_n:
       best, best_n = col, n
@@ -246,7 +251,7 @@ def find_hex_column(df_):
 
 
 def get_couleur_info(sub_df):
-  """Récupère le code HEX de la colonne `couleur` (AR) pour la typterre donnée."""
+  """Récupère le code HEX de la colonne `couleur_fond` (AR) pour la typterre donnée."""
   col_target = find_hex_column(sub_df)
   if col_target is not None:
     for _, row in sub_df.iterrows():
@@ -684,7 +689,7 @@ if df is not None:
           f"Aucun code hex trouvé dans le fichier `{EXCEL_PATH}` "
           f"({len(df.columns)} colonnes lues, dernière : « {df.columns[-1]} »). "
           "Vérifiez que le fichier Excel déployé est bien celui qui contient la "
-          "colonne « couleur » (AR, 44 colonnes)."
+          "colonne « couleur_fond » (AR, 44 colonnes)."
       )
     st.caption(
         f"🎨 Colonne : « {k_name} » | valeur lue : `{k_raw}` | couleur"

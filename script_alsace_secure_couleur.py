@@ -228,32 +228,27 @@ def read_ar_fills():
 
 
 def get_couleur_info(sub_df):
-  """Récupère directement la couleur HEX renseignée dans la colonne AR ('couleur')."""
-  col_target = None
-  for c in sub_df.columns:
-    if str(c).strip().lower() in ["couleur", "couleur ar", "ar"]:
-      col_target = c
-      break
-  if col_target is None and len(sub_df.columns) > COL_COULEUR_INDEX:
-    col_target = sub_df.columns[COL_COULEUR_INDEX]
+  """Récupère le code couleur HEX (#RRGGBB) situé dans les colonnes tout à droite."""
+  # Parcourt les colonnes de droite à gauche
+  for col in reversed(sub_df.columns):
+    for idx, row in sub_df.iterrows():
+      val = row[col]
+      c = format_hex_color(val)
+      if c:
+        return col, val, c, "code hex trouvé"
 
-  if col_target is None:
-    return "AR (couleur)", None, COULEUR_PAR_DEFAUT, "colonne non trouvée"
-
+  # Si aucun code HEX n'est écrit, vérifie le remplissage de cellule Excel
   fills = read_ar_fills()
-  raw = None
-  for idx, row in sub_df.iterrows():
-    value = row[col_target]
-    if raw is None and pd.notna(value):
-      raw = value
-
-    c = format_hex_color(value)
-    if c:
-      return col_target, value, c, "valeur hex de la cellule"
+  col_target = (
+      sub_df.columns[COL_COULEUR_INDEX]
+      if len(sub_df.columns) > COL_COULEUR_INDEX
+      else sub_df.columns[-1]
+  )
+  for idx in sub_df.index:
     if idx in fills:
-      return col_target, value, fills[idx], "remplissage de la cellule"
+      return col_target, sub_df.loc[idx, col_target], fills[idx], "remplissage de cellule"
 
-  return col_target, raw, COULEUR_PAR_DEFAUT, "couleur par défaut"
+  return "Non trouvée", None, COULEUR_PAR_DEFAUT, "couleur par défaut"
 
 
 def generate_html(df_data, target_id, logos_html=""):

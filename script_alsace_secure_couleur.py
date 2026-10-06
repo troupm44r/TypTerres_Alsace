@@ -287,11 +287,16 @@ def generate_html(df_data, target_id, logos_html=""):
       else ""
   )
 
+  couleur_fond = (
+      str(first["couleur"])
+      if pd.notna(first["couleur"])
+      else COULEUR_PAR_DEFAUT
+  )
   # Récupération directe de la couleur HEX depuis la colonne AR
-  _, _, couleur_fond, _ = get_couleur_info(sub_df)
+  _, _, couleur_transparente, _ = hex_to_rgba(couleur_fond, alpha=0.30)
 
-  # Couleur transparente (30% d'opacité) pour la title-box
-  couleur_transparente = hex_to_rgba(couleur_fond, alpha=0.30)
+#   # Couleur transparente (30% d'opacité) pour la title-box
+#   couleur_transparente = hex_to_rgba(couleur_fond, alpha=0.30)
 
   # Adaptations des couleurs de texte pour garantir une parfaite lisibilité
   couleur_texte_subtitle = text_color_for(couleur_fond)

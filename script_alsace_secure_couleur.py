@@ -189,13 +189,18 @@ def format_hex_color(val):
   return None
 
 
-def hex_to_rgba(hex_color, alpha=0.3):
-  """Convertit un code hex (#RRGGBB) en format CSS rgba(r, g, b, alpha)."""
-  if not hex_color or not hex_color.startswith("#") or len(hex_color) != 7:
-    return f"rgba(0, 168, 150, {alpha})"
-  h = hex_color.lstrip("#")
+def hex_to_transparent(hex_color, alpha=0.30):
+  """Simule une transparence : mélange la couleur avec du blanc.
+
+  Retourne un hex opaque (#RRGGBB) équivalent à `hex_color` à `alpha` d'opacité
+  sur fond blanc. Contrairement à rgba(), compatible avec WeasyPrint ET xhtml2pdf.
+  """
+  h = (hex_color or COULEUR_PAR_DEFAUT).lstrip("#")
+  if len(h) != 6:
+    h = COULEUR_PAR_DEFAUT.lstrip("#")
   r, g, b = (int(h[i : i + 2], 16) for i in (0, 2, 4))
-  return f"rgba({r}, {g}, {b}, {alpha})"
+  mix = lambda c: round(c * alpha + 255 * (1 - alpha))
+  return f"#{mix(r):02X}{mix(g):02X}{mix(b):02X}"
 
 
 def text_color_for(bg_hex):
@@ -228,23 +233,21 @@ def read_ar_fills():
 
 
 def get_couleur_info(sub_df):
-  """Récupère le code HEX dans la colonne AR (44e colonne / index 43)."""
-  # Cible directement la colonne AR (index 43)
-  if len(sub_df.columns) > COL_COULEUR_INDEX:
+  """Récupère le code HEX de la colonne `couleur` (AR) pour la typterre donnée."""
+  # 1) colonne nommée exactement « couleur » (minuscule, = colonne AR),
+  #    à ne pas confondre avec « Couleur » (nom de la couleur de l'horizon)
+  col_target = None
+  if "couleur" in sub_df.columns:
+    col_target = "couleur"
+  elif len(sub_df.columns) > COL_COULEUR_INDEX:
     col_target = sub_df.columns[COL_COULEUR_INDEX]
-    for idx, row in sub_df.iterrows():
+
+  if col_target is not None:
+    for _, row in sub_df.iterrows():
       val = row[col_target]
       c = format_hex_color(val)
       if c:
-        return "AR (couleur)", val, c, "code hex de la colonne AR"
-
-  # Secours : parcourt les colonnes en partant de la droite
-  for col in reversed(sub_df.columns):
-    for idx, row in sub_df.iterrows():
-      val = row[col]
-      c = format_hex_color(val)
-      if c:
-        return str(col), val, c, "code hex trouvé"
+        return "AR (couleur)", val, c.upper(), "code hex de la colonne AR"
 
   return "AR (couleur)", None, COULEUR_PAR_DEFAUT, "couleur par défaut"
 
@@ -283,11 +286,8 @@ def generate_html(df_data, target_id, logos_html=""):
   # Récupération sécurisée de la couleur HEX via la fonction dédiée
   _, _, couleur_fond, _ = get_couleur_info(sub_df)
 
-  # Conversion en valeur CSS rgba transparente
-  couleur_transparente = hex_to_rgba(couleur_fond, alpha=0.30)
-
-#   # Couleur transparente (30% d'opacité) pour la title-box
-#   couleur_transparente = hex_to_rgba(couleur_fond, alpha=0.30)
+  # Version « transparente » (30 % d'opacité sur blanc) calculée en hex opaque
+  couleur_transparente = hex_to_transparent(couleur_fond, alpha=0.30)
 
   # Adaptations des couleurs de texte pour garantir une parfaite lisibilité
   couleur_texte_subtitle = text_color_for(couleur_fond)
@@ -674,7 +674,7 @@ if df is not None:
 
     k_name, k_raw, k_hex, k_source = get_couleur_info(sub)
     st.caption(
-        f"🎨 Colonne K : « {k_name} » | valeur lue : `{k_raw}` | couleur"
+        f"🎨 Colonne AR : « {k_name} » | valeur lue : `{k_raw}` | couleur"
         f" appliquée : `{k_hex}` ({k_source})"
     )
 

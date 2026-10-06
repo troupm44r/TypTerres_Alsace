@@ -140,7 +140,7 @@ EXCEL_PATH = "70_Typterres_Alsace_v04_2018_publipostageREVU.xlsx"
 COL_ID = "Identifiant Typterres (1 à 70)"
 
 # Colonne AR (44e colonne Excel = Index 43 en Python 0-indexed)
-COL_COULEUR_INDEX = 43
+COL_COULEUR_INDEX = 44
 
 
 @st.cache_data

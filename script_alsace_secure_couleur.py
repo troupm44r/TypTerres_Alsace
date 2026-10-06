@@ -139,8 +139,8 @@ cleaned_count = clear_old_pdfs()
 EXCEL_PATH = "70_Typterres_Alsace_v04_2018_publipostageREVU.xlsx"
 COL_ID = "Identifiant Typterres (1 à 70)"
 
-# Colonne AR (44e colonne Excel = Index 43 en Python 0-indexed)
-COL_COULEUR_INDEX = 44
+# Colonne AR de l'Excel : en-tête exact « couleur_fond » (codes #RRGGBB)
+COL_COULEUR_FOND = "couleur_fond"
 
 
 @st.cache_data
@@ -213,54 +213,15 @@ def text_color_for(bg_hex):
   return "#111111" if luminance > 150 else "#ffffff"
 
 
-@st.cache_data
-def read_ar_fills():
-  """Couleurs de remplissage des cellules de la colonne AR (si mise en forme Excel)."""
-  fills = {}
-  try:
-    from openpyxl import load_workbook
-
-    ws = load_workbook(EXCEL_PATH, data_only=True).active
-    for r in range(2, ws.max_row + 1):
-      f = ws.cell(row=r, column=COL_COULEUR_INDEX + 1).fill
-      if f is not None and f.fill_type == "solid":
-        rgb = f.fgColor.rgb
-        if isinstance(rgb, str) and len(rgb) == 8 and rgb[2:].upper() != "000000":
-          fills[r - 2] = "#" + rgb[2:]
-  except Exception:
-    pass
-  return fills
-
-
-# Nom de la colonne Excel contenant le code hex (colonne AR)
-# (« colonne_fond » accepté aussi, au cas où l'en-tête serait écrit ainsi)
-COL_FOND_NAMES = ("couleur_fond", "colonne_fond")
-
-
-def find_hex_column(df_):
-  """Trouve la colonne qui contient les codes hex (#RRGGBB), quel que soit son nom exact."""
-  best, best_n = None, 0
-  for col in df_.columns:
-    n = sum(1 for v in df_[col].dropna().head(300) if format_hex_color(v))
-    # priorité à la colonne nommée « couleur_fond » (casse/espaces ignorés)
-    if str(col).strip().lower() in COL_FOND_NAMES and n > 0:
-      return col
-    if n > best_n:
-      best, best_n = col, n
-  return best
-
-
 def get_couleur_info(sub_df):
-  """Récupère le code HEX de la colonne `couleur_fond` (AR) pour la typterre donnée."""
-  col_target = find_hex_column(sub_df)
-  if col_target is not None:
+  """Lit le code HEX (#RRGGBB) dans la colonne `couleur_fond` (colonne AR)."""
+  if COL_COULEUR_FOND in sub_df.columns:
     for _, row in sub_df.iterrows():
-      val = row[col_target]
+      val = row[COL_COULEUR_FOND]
       c = format_hex_color(val)
       if c:
-        return str(col_target), val, c.upper(), "code hex lu dans le fichier Excel"
-
-  return "introuvable", None, COULEUR_PAR_DEFAUT, "couleur par défaut"
+        return COL_COULEUR_FOND, val, c.upper(), "code hex lu dans le fichier Excel"
+  return COL_COULEUR_FOND, None, COULEUR_PAR_DEFAUT, "couleur par défaut"
 
 
 def generate_html(df_data, target_id, logos_html=""):
@@ -686,13 +647,11 @@ if df is not None:
     k_name, k_raw, k_hex, k_source = get_couleur_info(sub)
     if k_raw is None:
       st.warning(
-          f"Aucun code hex trouvé dans le fichier `{EXCEL_PATH}` "
-          f"({len(df.columns)} colonnes lues, dernière : « {df.columns[-1]} »). "
-          "Vérifiez que le fichier Excel déployé est bien celui qui contient la "
-          "colonne « couleur_fond » (AR, 44 colonnes)."
+          f"Colonne « {COL_COULEUR_FOND} » absente ou vide dans `{EXCEL_PATH}` "
+          f"({len(df.columns)} colonnes lues, dernière : « {df.columns[-1]} »)."
       )
     st.caption(
-        f"🎨 Colonne : « {k_name} » | valeur lue : `{k_raw}` | couleur"
+        f"🎨 Colonne « {k_name} » (AR) | valeur lue : `{k_raw}` | couleur"
         f" appliquée : `{k_hex}` ({k_source})"
     )
 

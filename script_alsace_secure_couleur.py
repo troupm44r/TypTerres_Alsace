@@ -1,16 +1,17 @@
 import base64
 import glob
-import io
 import os
 import re
 import pandas as pd
 import streamlit as st
 
+# Import adapté selon la méthode retenue (WeasyPrint ou xhtml2pdf)
 try:
   from weasyprint import HTML
 
   HAS_WEASYPRINT = True
 except ImportError:
+  import io
   from xhtml2pdf import pisa
 
   HAS_WEASYPRINT = False
@@ -21,9 +22,11 @@ st.set_page_config(
 
 
 # ---------------------------------------------------------
-# AUTHENTIFICATION SIMPLE
+# SYSTEME D'AUTHENTIFICATION SIMPLE (VIA SECRETS)
 # ---------------------------------------------------------
 def check_password():
+  """Vérifie le mot de passe saisi et récupère l'identifiant utilisateur (la clé)."""
+
   def password_entered():
     user_pwd = st.session_state["password_input"]
     passwords_dict = st.secrets.get("passwords", {})
@@ -67,6 +70,9 @@ def check_password():
 if not check_password():
   st.stop()
 
+# ---------------------------------------------------------
+# AFFICHAGE DU MESSAGE ET BOUTON DE DECONNEXION
+# ---------------------------------------------------------
 current_user = st.session_state.get("user_name", "Utilisateur")
 st.sidebar.markdown(f"**Bienvenue {current_user}**")
 
@@ -76,10 +82,11 @@ if st.sidebar.button("Déconnexion"):
     del st.session_state["user_name"]
   st.rerun()
 
-# ---------------------------------------------------------
-# LOGOS ET IMAGES
-# ---------------------------------------------------------
+# ==========================================
+# Fichiers d'images et logos
+# ==========================================
 MAP_IMAGE_PATH = "alsace.png"
+
 LOGO_FILES = [
     "TypTerres_alsace.png",
     "CA_GE.png",
@@ -92,6 +99,7 @@ LOGO_FILES = [
 
 
 def get_base64_img_src(file_path):
+  """Convertit une image locale en source base64 pour le HTML."""
   if os.path.exists(file_path):
     with open(file_path, "rb") as f:
       encoded = base64.b64encode(f.read()).decode()
@@ -105,6 +113,8 @@ def get_base64_logos_html(image_paths):
     src = get_base64_img_src(path)
     if src:
       img_tags.append(f'<img src="{src}" alt="Logo" />')
+    else:
+      st.toast(f"⚠️ Logo introuvable : {path}", icon="⚠️")
 
   if img_tags:
     return f'<div class="logos-container">{"".join(img_tags)}</div>'
@@ -126,10 +136,11 @@ def clear_old_pdfs():
 
 cleaned_count = clear_old_pdfs()
 
-# ---------------------------------------------------------
-# CHARGEMENT DU DATASET ET DÉTECTION DES COLONNES
-# ---------------------------------------------------------
 EXCEL_PATH = "70_Typterres_Alsace_v04_2018_publipostageREVU.xlsx"
+COL_ID = "Identifiant Typterres (1 à 70)"
+
+# Colonne AR (44e colonne Excel = Index 43 en Python 0-indexed)
+COL_COULEUR_INDEX = 43
 
 
 @st.cache_data
@@ -142,18 +153,6 @@ def load_dataset():
 
 df = load_dataset()
 
-
-def find_col(df_data, keywords, fallback_index=None):
-  """Recherche une colonne par mots-clés ou par son index de secours."""
-  for kw in keywords:
-    for col in df_data.columns:
-      if kw.lower() in str(col).strip().lower():
-        return col
-  if fallback_index is not None and len(df_data.columns) > fallback_index:
-    return df_data.columns[fallback_index]
-  return None
-
-
 DRAINAGE_MAP = {
     1.0: "Excessif",
     2.0: "Bon",
@@ -162,6 +161,7 @@ DRAINAGE_MAP = {
     5.0: "Pauvre",
     6.0: "Très pauvre",
 }
+
 PIERROSITE_MAP = {
     "0": "nulle à très faible (<5%)",
     "1": "faible (5% à 15%)",
@@ -169,23 +169,28 @@ PIERROSITE_MAP = {
     "3": "forte (30% à 50%)",
 }
 
+# ---------------------------------------------------------
+# GESTION DE LA COULEUR HEXADÉCIMALE (#XXXXXX)
+# ---------------------------------------------------------
 COULEUR_PAR_DEFAUT = "#00a896"
 
 
-def extract_hex_color(val):
+def format_hex_color(val):
+  """Vérifie et formate directement le code hexadécimal (#RRGGBB)."""
   if pd.isna(val):
     return None
   v = str(val).strip()
-  match = re.search(r"#[0-9a-fA-F]{6}", v)
-  if match:
-    return match.group(0).upper()
-  match_nohash = re.search(r"^[0-9a-fA-F]{6}$", v)
-  if match_nohash:
-    return f"#{match_nohash.group(0)}".upper()
+  if not v:
+    return None
+  if not v.startswith("#"):
+    v = f"#{v}"
+  if re.fullmatch(r"#[0-9a-fA-F]{6}", v):
+    return v
   return None
 
 
 def hex_to_rgba(hex_color, alpha=0.3):
+  """Convertit un code hex (#RRGGBB) en format CSS rgba(r, g, b, alpha)."""
   if not hex_color or not hex_color.startswith("#") or len(hex_color) != 7:
     return f"rgba(0, 168, 150, {alpha})"
   h = hex_color.lstrip("#")
@@ -194,6 +199,7 @@ def hex_to_rgba(hex_color, alpha=0.3):
 
 
 def text_color_for(bg_hex):
+  """Détermine si le texte doit être noir ou blanc selon la luminosité du fond."""
   h = bg_hex.lstrip("#")
   if len(h) != 6:
     return "#ffffff"
@@ -204,14 +210,14 @@ def text_color_for(bg_hex):
 
 @st.cache_data
 def read_ar_fills():
+  """Couleurs de remplissage des cellules de la colonne AR (si mise en forme Excel)."""
   fills = {}
   try:
     from openpyxl import load_workbook
 
     ws = load_workbook(EXCEL_PATH, data_only=True).active
-    col_ar_idx = 44  # Colonne AR (1-based index)
     for r in range(2, ws.max_row + 1):
-      f = ws.cell(row=r, column=col_ar_idx).fill
+      f = ws.cell(row=r, column=COL_COULEUR_INDEX + 1).fill
       if f is not None and f.fill_type == "solid":
         rgb = f.fgColor.rgb
         if isinstance(rgb, str) and len(rgb) == 8 and rgb[2:].upper() != "000000":
@@ -221,187 +227,196 @@ def read_ar_fills():
   return fills
 
 
-def get_couleur_info(sub_df, col_couleur):
-  if col_couleur is None or col_couleur not in sub_df.columns:
-    return "AR", None, COULEUR_PAR_DEFAUT, "colonne non trouvée"
+def get_couleur_info(sub_df):
+  """Récupère directement la couleur HEX renseignée dans la colonne AR ('couleur')."""
+  col_target = None
+  for c in sub_df.columns:
+    if str(c).strip().lower() in ["couleur", "couleur ar", "ar"]:
+      col_target = c
+      break
+  if col_target is None and len(sub_df.columns) > COL_COULEUR_INDEX:
+    col_target = sub_df.columns[COL_COULEUR_INDEX]
+
+  if col_target is None:
+    return "AR (couleur)", None, COULEUR_PAR_DEFAUT, "colonne non trouvée"
 
   fills = read_ar_fills()
-  raw_found = None
-
+  raw = None
   for idx, row in sub_df.iterrows():
-    val = row[col_couleur]
-    if raw_found is None and pd.notna(val):
-      raw_found = val
+    value = row[col_target]
+    if raw is None and pd.notna(value):
+      raw = value
 
-    c = extract_hex_color(val)
+    c = format_hex_color(value)
     if c:
-      return col_couleur, val, c, "valeur hex de la cellule"
-
+      return col_target, value, c, "valeur hex de la cellule"
     if idx in fills:
-      return col_couleur, val, fills[idx], "remplissage de la cellule"
+      return col_target, value, fills[idx], "remplissage de la cellule"
 
-  return col_couleur, raw_found, COULEUR_PAR_DEFAUT, "couleur par défaut"
+  return col_target, raw, COULEUR_PAR_DEFAUT, "couleur par défaut"
 
 
-def generate_html(
-    df_data,
-    target_id,
-    col_id,
-    col_couleur,
-    col_layer,
-    col_nom,
-    col_ref,
-    logos_html="",
-):
-  sub_df = df_data[df_data[col_id] == target_id]
-  if col_layer and col_layer in sub_df.columns:
-    sub_df = sub_df.sort_values(col_layer)
-
+def generate_html(df_data, target_id, logos_html=""):
+  sub_df = df_data[df_data[COL_ID] == target_id].sort_values(
+      "Numéro couche Typterres"
+  )
   if sub_df.empty:
     return None
 
   first = sub_df.iloc[0]
 
-  titre_typterre = f"TYPTERRE {int(first[col_id])}"
+  titre_typterre = f"TYPTERRE {int(first[COL_ID])}"
   nom_typterre = (
-      str(first[col_nom]) if col_nom and pd.notna(first[col_nom]) else ""
+      str(first["NOM TYPTERRES (70)"])
+      if pd.notna(first["NOM TYPTERRES (70)"])
+      else ""
   )
-  ref_pedo = str(first[col_ref]) if col_ref and pd.notna(first[col_ref]) else ""
-
-  c_region = find_col(df_data, ["petite région", "région"])
+  ref_pedo = (
+      str(first["NOM REFERENTIEL PEDOLOGIQUE"])
+      if pd.notna(first["NOM REFERENTIEL PEDOLOGIQUE"])
+      else ""
+  )
   petite_region = (
-      str(first[c_region]) if c_region and pd.notna(first[c_region]) else ""
+      str(first["Petite Région Typterres (11)"])
+      if pd.notna(first["Petite Région Typterres (11)"])
+      else ""
   )
-
-  c_mat = find_col(df_data, ["matériau parental", "materiau"])
-  mat_parental = str(first[c_mat]) if c_mat and pd.notna(first[c_mat]) else ""
-
-  c_surf = find_col(df_data, ["surface totale", "surface"])
-  surface = (
-      f"{int(first[c_surf])} ha" if c_surf and pd.notna(first[c_surf]) else ""
-  )
-
-  c_sub = find_col(df_data, ["sous typsimplifié", "simplifié"])
-  correspondance_typt = str(first[c_sub]) if c_sub and pd.notna(first[c_sub]) else ""
-
-  c_guide = find_col(df_data, ["fiche guide", "guide"])
-  guide_sols = str(first[c_guide]) if c_guide and pd.notna(first[c_guide]) else ""
-
-  c_gren = find_col(df_data, ["gren", "nitrates"])
-  directive_nitrates = str(first[c_gren]) if c_gren and pd.notna(first[c_gren]) else ""
-
-  # Récupération couleur
-  _, _, couleur_fond, _ = get_couleur_info(sub_df, col_couleur)
-  couleur_transparente = hex_to_rgba(couleur_fond, alpha=0.30)
-  couleur_texte_subtitle = text_color_for(couleur_fond)
-
-  # Épaisseur & RU
-  c_ep = find_col(df_data, ["epaisseur sol"], fallback_index=None)
-  c_ep_min = find_col(df_data, ["epaisseur sol 'min'"])
-  c_ep_max = find_col(df_data, ["epaisseur sol 'max'"])
-
-  epaisseur = ""
-  if c_ep and pd.notna(first[c_ep]):
-    ep_val = int(first[c_ep])
-    ep_min = int(first[c_ep_min]) if c_ep_min and pd.notna(first[c_ep_min]) else ""
-    ep_max = int(first[c_ep_max]) if c_ep_max and pd.notna(first[c_ep_max]) else ""
-    epaisseur = f"{ep_val} cm (min : {ep_min} cm , max : {ep_max} cm)"
-
-  c_pierr = find_col(df_data, ["pierrosité surface", "pierrosité"])
-  pierrosite_val = str(first[c_pierr]) if c_pierr and pd.notna(first[c_pierr]) else ""
-  pierrosite_txt = PIERROSITE_MAP.get(pierrosite_val, pierrosite_val)
-
-  c_ru = find_col(df_data, ["estimation ru du sol (mm)"])
-  c_ru_min = find_col(df_data, ["estimation ru du sol 'min'"])
-  c_ru_max = find_col(df_data, ["estimation ru du sol 'max'"])
-
-  ru_sol = ""
-  if c_ru and pd.notna(first[c_ru]):
-    ru_val = round(first[c_ru])
-    ru_min = round(first[c_ru_min]) if c_ru_min and pd.notna(first[c_ru_min]) else ""
-    ru_max = round(first[c_ru_max]) if c_ru_max and pd.notna(first[c_ru_max]) else ""
-    ru_sol = f"{ru_val} mm ( min : {ru_min} mm , max : {ru_max} mm)"
-
-  c_eff = find_col(df_data, ["effervescence"])
-  effervescence = str(first[c_eff]) if c_eff and pd.notna(first[c_eff]) else ""
-
-  c_drain = find_col(df_data, ["drainage naturel", "drainage"])
-  drain_val = first[c_drain] if c_drain and pd.notna(first[c_drain]) else ""
-  drainage_txt = DRAINAGE_MAP.get(drain_val, str(drain_val))
-
-  map_src = get_base64_img_src(MAP_IMAGE_PATH)
-  map_html = (
-      f'<img src="{map_src}" class="map-img" alt="Carte Alsace" />'
-      if map_src
+  mat_parental = (
+      str(first["NOM MATERIAU PARENTAL"])
+      if pd.notna(first["NOM MATERIAU PARENTAL"])
       else ""
   )
 
-  # Récupération dynamique des colonnes de tableau d'horizons
-  c_nom_couche = find_col(df_data, ["nom couche"])
-  c_epaiss_couche = find_col(df_data, ["epaissseur couche", "épaisseur couche"])
-  c_geppa = find_col(df_data, ["texture geppa", "geppa"])
-  c_argile = find_col(df_data, ["taux argile", "argile"])
-  c_limon = find_col(df_data, ["taux limon", "limon"])
-  c_sable = find_col(df_data, ["taux sable", "sable"])
-  c_eg = find_col(
-      df_data, ["abondance volumique", "éléments grossiers", "grossiers"]
+  # Récupération directe de la couleur HEX depuis la colonne AR
+  _, _, couleur_fond, _ = get_couleur_info(sub_df)
+
+  # Couleur transparente (30% d'opacité) pour la title-box
+  couleur_transparente = hex_to_rgba(couleur_fond, alpha=0.30)
+
+  # Adaptations des couleurs de texte pour garantir une parfaite lisibilité
+  couleur_texte_subtitle = text_color_for(couleur_fond)
+
+  surface = (
+      f"{int(first['Surface Totale ha Typterres Simp'])} ha"
+      if pd.notna(first["Surface Totale ha Typterres Simp"])
+      else ""
   )
-  c_mo = find_col(df_data, ["matière organique"])
-  c_ph = find_col(df_data, ["ph eau", "ph"])
-  c_calc = find_col(df_data, ["calcaire total"])
-  c_cec = find_col(df_data, ["cec"])
-  c_da = find_col(df_data, ["densité apparente"])
-  c_couleur_txt = find_col(df_data, ["couleur"], fallback_index=43)
+  correspondance_typt = (
+      str(first["Identifiant sous TypSimplifié (70)"])
+      if pd.notna(first["Identifiant sous TypSimplifié (70)"])
+      else ""
+  )
+  guide_sols = (
+      str(first["exemple FICHE GUIDE des sols"])
+      if pd.notna(first["exemple FICHE GUIDE des sols"])
+      else ""
+  )
+  directive_nitrates = (
+      str(first["correspondance GREN Directive Nitrates"])
+      if pd.notna(first["correspondance GREN Directive Nitrates"])
+      else ""
+  )
+
+  ep_val, ep_min, ep_max = (
+      first["Epaisseur Sol"],
+      first["Epaisseur Sol 'min'"],
+      first["Epaisseur Sol 'max'"],
+  )
+  epaisseur = (
+      f"{int(ep_val)} cm (min : {int(ep_min)} cm , max : {int(ep_max)} cm)"
+      if pd.notna(ep_val)
+      else ""
+  )
+
+  pierrosite_val = (
+      str(first["Pierrosité surface"])
+      if pd.notna(first["Pierrosité surface"])
+      else ""
+  )
+  pierrosite_txt = PIERROSITE_MAP.get(pierrosite_val, pierrosite_val)
+
+  ru_val, ru_min, ru_max = (
+      first["Estimation RU du Sol (mm)"],
+      first["Estimation RU du Sol 'min' (mm)"],
+      first["Estimation RU du Sol 'max' (mm)"],
+  )
+  ru_sol = (
+      f"{round(ru_val)} mm ( min : {round(ru_min)} mm , max : {round(ru_max)} mm)"
+      if pd.notna(ru_val)
+      else ""
+  )
+
+  effervescence = (
+      str(first["Effervescence en clair"])
+      if pd.notna(first["Effervescence en clair"])
+      else ""
+  )
+  drainage_txt = DRAINAGE_MAP.get(
+      first["Drainage naturel"],
+      str(first["Drainage naturel"])
+      if pd.notna(first["Drainage naturel"])
+      else "",
+  )
+
+  map_src = get_base64_img_src(MAP_IMAGE_PATH)
+  if map_src:
+    map_html = f'<img src="{map_src}" class="map-img" alt="Carte Alsace" />'
+  else:
+    map_html = (
+        '<div style="color:red; font-size:8pt; margin-top:5px;">⚠️ Image'
+        " alsace.png introuvable</div>"
+    )
 
   horizons = []
   for idx, row in sub_df.iterrows():
-    num_c = (
-        int(row[col_layer]) if col_layer and pd.notna(row[col_layer]) else ""
-    )
-    nom_c = (
-        str(row[c_nom_couche])
-        if c_nom_couche and pd.notna(row[c_nom_couche])
-        else ""
-    )
-
     horizons.append({
-        "num": f"H{num_c} ({nom_c})",
+        "num": (
+            f"H{int(row['Numéro couche Typterres'])} ({row['Nom couche Typterres'] if pd.notna(row['Nom couche Typterres']) else ''})"
+        ),
         "ep": (
-            int(row[c_epaiss_couche])
-            if c_epaiss_couche and pd.notna(row[c_epaiss_couche])
+            int(row["Epaissseur couche"])
+            if pd.notna(row["Epaissseur couche"])
             else ""
         ),
         "geppa": (
-            str(row[c_geppa]) if c_geppa and pd.notna(row[c_geppa]) else ""
+            str(row["TEXTURE GEPPA"]) if pd.notna(row["TEXTURE GEPPA"]) else ""
         ),
         "argile": (
-            round(row[c_argile] / 10, 1)
-            if c_argile and pd.notna(row[c_argile])
+            round(row["TAUX ARGILE"] / 10, 1)
+            if pd.notna(row["TAUX ARGILE"])
             else ""
         ),
         "limon": (
-            round(row[c_limon] / 10, 1)
-            if c_limon and pd.notna(row[c_limon])
+            round(row["TAUX LIMON"] / 10, 1)
+            if pd.notna(row["TAUX LIMON"])
             else ""
         ),
         "sable": (
-            round(row[c_sable] / 10, 1)
-            if c_sable and pd.notna(row[c_sable])
+            round(row["TAUX SABLE"] / 10, 1)
+            if pd.notna(row["TAUX SABLE"])
             else ""
         ),
-        "eg": int(row[c_eg]) if c_eg and pd.notna(row[c_eg]) else "",
+        "eg": (
+            int(row["Abondance volumique en éléments grossiers"])
+            if pd.notna(row["Abondance volumique en éléments grossiers"])
+            else ""
+        ),
         "mo": (
-            round(row[c_mo] / 10, 1) if c_mo and pd.notna(row[c_mo]) else ""
-        ),
-        "ph": round(row[c_ph], 1) if c_ph and pd.notna(row[c_ph]) else "",
-        "calc": int(row[c_calc]) if c_calc and pd.notna(row[c_calc]) else "",
-        "cec": round(row[c_cec], 1) if c_cec and pd.notna(row[c_cec]) else "",
-        "da": round(row[c_da], 2) if c_da and pd.notna(row[c_da]) else "",
-        "couleur": (
-            str(row[c_couleur_txt])
-            if c_couleur_txt and pd.notna(row[c_couleur_txt])
+            round(row["Matière organique"] / 10, 1)
+            if pd.notna(row["Matière organique"])
             else ""
         ),
+        "ph": round(row["pH eau"], 1) if pd.notna(row["pH eau"]) else "",
+        "calc": (
+            int(row["Calcaire total"]) if pd.notna(row["Calcaire total"]) else ""
+        ),
+        "cec": round(row["CEC"], 1) if pd.notna(row["CEC"]) else "",
+        "da": (
+            round(row["Densité apparente"], 2)
+            if pd.notna(row["Densité apparente"])
+            else ""
+        ),
+        "couleur": str(row["Couleur"]) if pd.notna(row["Couleur"]) else "",
     })
 
   return f"""<!DOCTYPE html>
@@ -427,6 +442,7 @@ html, body {{
 
 .header-top {{ text-align: right; font-weight: bold; font-size: 14pt; margin-bottom: 4px; }}
 
+/* Title-box avec la couleur transparente */
 .title-box {{ 
     background-color: {couleur_transparente}; 
     color: #111111; 
@@ -436,6 +452,7 @@ html, body {{
     font-weight: bold; 
 }}
 
+/* Subtitle-box avec la couleur pleine */
 .subtitle-box {{ 
     background-color: {couleur_fond}; 
     border: 1.5px solid #000; 
@@ -481,6 +498,7 @@ html, body {{
     font-weight: bold; 
 }}
 
+/* TEXTE INFORMATIF DIRECTEMENT SOUS LE TABLEAU */
 .footer-note {{ 
     font-size: 6.8pt; 
     font-style: italic; 
@@ -490,11 +508,12 @@ html, body {{
     text-align: left;
 }}
 
+/* CONTAINER LOGOS */
 .logos-container {{
     width: 100%;
     padding-top: 4px;
     border-top: 1px solid #aaa;
-    text-align: center;
+    text-align: center; /* Centrage des logos */
 }}
 .logos-container img {{
     max-height: 32px;
@@ -504,6 +523,7 @@ html, body {{
     margin: 0 4px;
 }}
 
+/* ANCRAGE DES LOGOS EN BAS DE PAGE EN PDF */
 @media print {{
     .logos-container {{
         position: fixed;
@@ -589,6 +609,7 @@ html, body {{
 
 
 def create_pdf_bytes(html_content):
+  """Génération de PDF selon la librairie disponible."""
   if HAS_WEASYPRINT:
     return HTML(string=html_content).write_pdf()
   else:

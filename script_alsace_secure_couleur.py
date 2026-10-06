@@ -487,7 +487,7 @@ html, body {{
 
 .header-top {{ text-align: right; font-weight: bold; font-size: 14pt; margin-bottom: 4px; }}
 .title-box {{ background-color: {couleur_fond}; color: {couleur_texte}; border: 1.5px solid #000; padding: 5px 8px; font-size: 12.5pt; font-weight: bold; }}
-.subtitle-box {{ background-color: #00a896; border: 1.5px solid #000; border-top: none; padding: 5px 8px; font-size: 10pt; font-weight: bold; color: #fff; margin-bottom: 8px; }}
+.subtitle-box {{ background-color: {couleur_fond}; border: 1.5px solid #000; border-top: none; padding: 5px 8px; font-size: 10pt; font-weight: bold; color: #fff; margin-bottom: 8px; }}
 
 .info-grid {{ width: 100%; border-collapse: collapse; margin-bottom: 6px; }}
 .info-grid td {{ vertical-align: top; padding: 2px 0; }}

@@ -228,23 +228,21 @@ def read_ar_fills():
 
 
 def get_couleur_info(sub_df):
-  """Récupère le code HEX dans la colonne 'couleur' située tout à droite."""
-  # Parcourt les colonnes de DROITE à GAUCHE
-  for col in reversed(sub_df.columns):
-    if str(col).strip().lower() in ["couleur", "couleur ar", "ar"]:
-      for idx, row in sub_df.iterrows():
-        val = row[col]
-        c = format_hex_color(val)
-        if c:
-          return col, val, c, "code hex trouvé"
+  """Récupère le code couleur HEX situé dans la colonne 'couleur' tout à droite (colonne 44)."""
+  # 1. Recherche prioritaire de la colonne tout à droite (index 43 / 44e colonne)
+  if len(sub_df.columns) > COL_COULEUR_INDEX:
+    col_target = sub_df.columns[COL_COULEUR_INDEX]
+    for idx, row in sub_df.iterrows():
+      c = format_hex_color(row[col_target])
+      if c:
+        return col_target, row[col_target], c, "code hex trouvé (colonne AR)"
 
-  # Sécurité : test direct de la toute dernière colonne
-  last_col = sub_df.columns[-1]
-  for idx, row in sub_df.iterrows():
-    val = row[last_col]
-    c = format_hex_color(val)
-    if c:
-      return last_col, val, c, "code hex (dernière colonne)"
+  # 2. Secours : parcourt les colonnes de DROITE à GAUCHE pour trouver un code #HEX
+  for col in reversed(sub_df.columns):
+    for idx, row in sub_df.iterrows():
+      c = format_hex_color(row[col])
+      if c:
+        return col, row[col], c, "code hex trouvé"
 
   return "couleur", None, COULEUR_PAR_DEFAUT, "couleur par défaut"
 

@@ -232,24 +232,30 @@ def read_ar_fills():
   return fills
 
 
+def find_hex_column(df_):
+  """Trouve la colonne qui contient les codes hex (#RRGGBB), quel que soit son nom exact."""
+  best, best_n = None, 0
+  for col in df_.columns:
+    n = sum(1 for v in df_[col].dropna().head(300) if format_hex_color(v))
+    # priorité aux colonnes nommées « couleur » (casse/espaces ignorés)
+    if str(col).strip().lower() == "couleur" and n > 0:
+      return col
+    if n > best_n:
+      best, best_n = col, n
+  return best
+
+
 def get_couleur_info(sub_df):
   """Récupère le code HEX de la colonne `couleur` (AR) pour la typterre donnée."""
-  # 1) colonne nommée exactement « couleur » (minuscule, = colonne AR),
-  #    à ne pas confondre avec « Couleur » (nom de la couleur de l'horizon)
-  col_target = None
-  if "couleur" in sub_df.columns:
-    col_target = "couleur"
-  elif len(sub_df.columns) > COL_COULEUR_INDEX:
-    col_target = sub_df.columns[COL_COULEUR_INDEX]
-
+  col_target = find_hex_column(sub_df)
   if col_target is not None:
     for _, row in sub_df.iterrows():
       val = row[col_target]
       c = format_hex_color(val)
       if c:
-        return "AR (couleur)", val, c.upper(), "code hex de la colonne AR"
+        return str(col_target), val, c.upper(), "code hex lu dans le fichier Excel"
 
-  return "AR (couleur)", None, COULEUR_PAR_DEFAUT, "couleur par défaut"
+  return "introuvable", None, COULEUR_PAR_DEFAUT, "couleur par défaut"
 
 
 def generate_html(df_data, target_id, logos_html=""):
@@ -673,8 +679,15 @@ if df is not None:
     )
 
     k_name, k_raw, k_hex, k_source = get_couleur_info(sub)
+    if k_raw is None:
+      st.warning(
+          f"Aucun code hex trouvé dans le fichier `{EXCEL_PATH}` "
+          f"({len(df.columns)} colonnes lues, dernière : « {df.columns[-1]} »). "
+          "Vérifiez que le fichier Excel déployé est bien celui qui contient la "
+          "colonne « couleur » (AR, 44 colonnes)."
+      )
     st.caption(
-        f"🎨 Colonne AR : « {k_name} » | valeur lue : `{k_raw}` | couleur"
+        f"🎨 Colonne : « {k_name} » | valeur lue : `{k_raw}` | couleur"
         f" appliquée : `{k_hex}` ({k_source})"
     )
 

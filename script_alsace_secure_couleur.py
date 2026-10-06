@@ -139,8 +139,8 @@ cleaned_count = clear_old_pdfs()
 EXCEL_PATH = "70_Typterres_Alsace_v04_2018_publipostageREVU.xlsx"
 COL_ID = "Identifiant Typterres (1 à 70)"
 
-# Colonne K du fichier Excel = 11e colonne (index 10)
-COL_COULEUR_INDEX = 10
+# Colonne AR (44e colonne Excel = Index 43 en Python 0-indexed)
+COL_COULEUR_INDEX = 43
 
 
 @st.cache_data
@@ -170,11 +170,10 @@ PIERROSITE_MAP = {
 }
 
 # ---------------------------------------------------------
-# GESTION DE LA COULEUR (COLONNE K)
+# GESTION DE LA COULEUR (COLONNE AR / COULEUR)
 # ---------------------------------------------------------
-COULEUR_PAR_DEFAUT = "#e0f7fa"  # utilisée si la cellule K est vide ou illisible
+COULEUR_PAR_DEFAUT = "#00a896"  # couleur par défaut si cellule vide ou introuvable
 
-# À compléter avec les noms réellement présents dans la colonne K
 COULEURS_NOMMEES = {
     "brun": "#8b5a2b",
     "brun foncé": "#4e342e",
@@ -194,7 +193,7 @@ COULEURS_NOMMEES = {
 
 
 def normalize_color(value, default=COULEUR_PAR_DEFAUT):
-  """Convertit la valeur de la colonne K en couleur CSS (hex)."""
+  """Convertit la valeur de la colonne en couleur CSS hex (#RRGGBB)."""
   if pd.isna(value):
     return default
   v = str(value).strip()
@@ -212,9 +211,20 @@ def normalize_color(value, default=COULEUR_PAR_DEFAUT):
   return COULEURS_NOMMEES.get(v.lower(), default)
 
 
+def hex_to_rgba(hex_color, alpha=0.3):
+  """Convertit un code couleur Hex (#RRGGBB) en format CSS rgba(r, g, b, alpha)."""
+  if not hex_color or not hex_color.startswith("#") or len(hex_color) != 7:
+    return f"rgba(0, 168, 150, {alpha})"
+  h = hex_color.lstrip("#")
+  r, g, b = (int(h[i : i + 2], 16) for i in (0, 2, 4))
+  return f"rgba({r}, {g}, {b}, {alpha})"
+
+
 def text_color_for(bg_hex):
-  """Texte noir ou blanc selon la luminosité du fond."""
+  """Détermine si le texte doit être noir ou blanc selon la luminosité du fond."""
   h = bg_hex.lstrip("#")
+  if len(h) != 6:
+    return "#ffffff"
   r, g, b = (int(h[i : i + 2], 16) for i in (0, 2, 4))
   luminance = 0.299 * r + 0.587 * g + 0.114 * b
   return "#111111" if luminance > 150 else "#ffffff"
@@ -235,7 +245,7 @@ MUNSELL_BASE = {
 
 
 def munsell_to_hex(v):
-  """Approximation d'une notation Munsell (ex. '10YR 3/2') en couleur hex."""
+  """Approximation d'une notation Munsell en couleur hex."""
   m = re.search(
       r"(\d+(?:[.,]\d+)?)\s*(YR|GY|BG|PB|RP|R|Y|G|B|P)\s*(\d+(?:[.,]\d+)?)\s*/\s*(\d+(?:[.,]\d+)?)",
       v.upper(),
@@ -271,8 +281,8 @@ def couleur_depuis_valeur(value):
 
 
 @st.cache_data
-def read_k_fills():
-  """Couleurs de remplissage des cellules de la colonne K (clé = index du DataFrame)."""
+def read_ar_fills():
+  """Couleurs de remplissage des cellules de la colonne AR (si mise en forme Excel)."""
   fills = {}
   try:
     from openpyxl import load_workbook
@@ -290,20 +300,32 @@ def read_k_fills():
 
 
 def get_couleur_info(sub_df):
-  """Renvoie (nom de colonne, valeur brute, couleur hex, source)."""
-  col_name = sub_df.columns[COL_COULEUR_INDEX]
-  fills = read_k_fills()
+  """Récupère la couleur renseignée dans la colonne AR ('couleur')."""
+  # Recherche dynamique par nom de colonne 'couleur' ou fallback sur l'index AR (43)
+  col_target = None
+  for c in sub_df.columns:
+    if str(c).strip().lower() in ["couleur", "couleur ar", "ar"]:
+      col_target = c
+      break
+  if col_target is None and len(sub_df.columns) > COL_COULEUR_INDEX:
+    col_target = sub_df.columns[COL_COULEUR_INDEX]
+
+  if col_target is None:
+    return "AR (couleur)", None, COULEUR_PAR_DEFAUT, "colonne non trouvée"
+
+  fills = read_ar_fills()
   raw = None
   for idx, row in sub_df.iterrows():
-    value = row.iloc[COL_COULEUR_INDEX]
+    value = row[col_target]
     if raw is None and pd.notna(value):
       raw = value
     c = couleur_depuis_valeur(value)
     if c:
-      return col_name, value, c, "valeur de la cellule"
+      return col_target, value, c, "valeur de la cellule"
     if idx in fills:
-      return col_name, value, fills[idx], "remplissage de la cellule"
-  return col_name, raw, COULEUR_PAR_DEFAUT, "couleur par défaut (rien de reconnu)"
+      return col_target, value, fills[idx], "remplissage de la cellule"
+
+  return col_target, raw, COULEUR_PAR_DEFAUT, "couleur par défaut"
 
 
 def generate_html(df_data, target_id, logos_html=""):
@@ -337,9 +359,14 @@ def generate_html(df_data, target_id, logos_html=""):
       else ""
   )
 
-  # Couleur issue de la colonne K (à la place du bleu fixe)
+  # Récupération de la couleur depuis la colonne AR
   _, _, couleur_fond, _ = get_couleur_info(sub_df)
-  couleur_texte = text_color_for(couleur_fond)
+
+  # Couleur transparente (30% d'opacité) pour la title-box
+  couleur_transparente = hex_to_rgba(couleur_fond, alpha=0.30)
+
+  # Adaptations des couleurs de texte pour garantir une parfaite lisibilité
+  couleur_texte_subtitle = text_color_for(couleur_fond)
 
   surface = (
       f"{int(first['Surface Totale ha Typterres Simp'])} ha"
@@ -486,8 +513,28 @@ html, body {{
 }}
 
 .header-top {{ text-align: right; font-weight: bold; font-size: 14pt; margin-bottom: 4px; }}
-.title-box {{ background-color: {couleur_fond}; color: {couleur_texte}; border: 1.5px solid #000; padding: 5px 8px; font-size: 12.5pt; font-weight: bold; }}
-.subtitle-box {{ background-color: {couleur_fond}; border: 1.5px solid #000; border-top: none; padding: 5px 8px; font-size: 10pt; font-weight: bold; color: #fff; margin-bottom: 8px; }}
+
+/* Title-box avec la couleur transparente */
+.title-box {{ 
+    background-color: {couleur_transparente}; 
+    color: #111111; 
+    border: 1.5px solid #000; 
+    padding: 5px 8px; 
+    font-size: 12.5pt; 
+    font-weight: bold; 
+}}
+
+/* Subtitle-box avec la couleur pleine */
+.subtitle-box {{ 
+    background-color: {couleur_fond}; 
+    border: 1.5px solid #000; 
+    border-top: none; 
+    padding: 5px 8px; 
+    font-size: 10pt; 
+    font-weight: bold; 
+    color: {couleur_texte_subtitle}; 
+    margin-bottom: 8px; 
+}}
 
 .info-grid {{ width: 100%; border-collapse: collapse; margin-bottom: 6px; }}
 .info-grid td {{ vertical-align: top; padding: 2px 0; }}

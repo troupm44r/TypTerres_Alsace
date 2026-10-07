@@ -308,11 +308,18 @@ def generate_html(df_data, target_id, logos_html=""):
       first["Estimation RU du Sol 'min' (mm)"],
       first["Estimation RU du Sol 'max' (mm)"],
   )
+#   ru_sol = (
+    
+#       f"{round(ru_val)} mm ( min : {round(ru_min)} mm , max : {round(ru_max)} mm)"
+#       if pd.notna(ru_val)
+#       else ""
+#   )
+
   ru_sol = (
-      f"{round(ru_val)} mm ( min : {round(ru_min)} mm , max : {round(ru_max)} mm)"
-      if pd.notna(ru_val)
-      else ""
-  )
+    f"{round(ru_val)} mm ( min : {round(ru_min)} mm , max : {ru_max if ru_max == '-' else round(ru_max)} mm)"
+    if pd.notna(ru_val)
+    else ""
+)
 
   effervescence = (
       str(first["Effervescence en clair"])
